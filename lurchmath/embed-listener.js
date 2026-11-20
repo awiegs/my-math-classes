@@ -242,6 +242,8 @@ const install = editor => {
     // if this is not an embedded version of the app, do nothing, because this
     // whole script is designed for embedded copies, not the top-level app
     if ( !isEmbedded() ) return
+    // flag the body for css purposes to let it know it's embedded
+    document.body.classList.add('lurch-embed')
     // when the editor finishes setting up, tell the top window that we're ready
     // to receive whatever document we should be displaying
     editor.on( 'init', () => window.top.postMessage( 'ready-for-embed', '*' ) )
@@ -254,7 +256,8 @@ const install = editor => {
         wrapper.innerHTML = event.data['lurch-embed']
         const div = wrapper.firstElementChild
         // ensure it's the right format
-        const format = div.getAttribute( 'format' ) || 'markdown'
+        // TODO: temporarily setting this to html until I get the markdown figured out
+        const format = div.getAttribute( 'format' ) || 'html'
         if ( format == 'html' ) {
             // convert Lurch-specific elements, fill editor, and maybe validate
             putElementContentsIntoEditor( div, editor )

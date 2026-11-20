@@ -36,7 +36,7 @@ import { getHeader } from './header-editor.js'
 import { onlyBefore, isOnScreen, copyHTMLToClipboard } from './utilities.js'
 import { Atom, className as atomClassName } from './atoms.js'
 import { addAutocompleteFunction } from './auto-completer.js'
-import { Dialog, SelectBoxItem } from './dialog.js'
+import { Dialog, TextInputItem, SelectBoxItem } from './dialog.js'
 import { Environment } from './lde-cdn.js'
 import { lookup, store } from './document-settings.js'
 import { appSettings } from './settings-install.js'
@@ -176,7 +176,7 @@ export class Shell extends Atom {
         const shellSubclassNames = Shell.subclassNames().filter( name => { 
             return (Atom.subclasses.get( name )?.advancedFriendly) } )
         if ( shellSubclassNames.length == 0 ) return false
-        const dialog = new Dialog( 'Edit environment', this.editor )
+        const dialog = new Dialog( 'Change environment type', this.editor )
         dialog.addItem( new SelectBoxItem(
             'shellSubclass',
             'Type of environment',
@@ -188,6 +188,33 @@ export class Shell extends Atom {
         return dialog.show().then( userHitOK => {
             if ( !userHitOK ) return false
             this.setSubclass( dialog.get( 'shellSubclass' ) )
+            return true
+        } )
+    }
+
+    /**
+     * Show a dialog to allow the user to edit the marginal label of the shell.
+     * The labels are currently limited to 11 characters. Any new lable is saved
+     * in the individual environment and preserved when the document is saved,
+     * but does not apply to all environments of the given type.
+     *
+     * @returns {Promise} a promise that resolves to true if the editing dialog
+     *   is shown and the user confirms their edits, or resolves to false if the
+     *   editing dialog cannot be shown or the user cancels
+     */
+    editMarginalLabel () {
+        const shellSubclassNames = Shell.subclassNames().filter( name => { 
+            return (Atom.subclasses.get( name )?.advancedFriendly) } )
+        if ( shellSubclassNames.length == 0 ) return false
+        const dialog = new Dialog( 'Edit marginal label', this.editor )
+        dialog.addItem( new TextInputItem('label','','') )
+        dialog.setDefaultFocus( 'label' )
+        dialog.setInitialData( {
+            label : this.element.dataset.shell_title
+        } )
+        return dialog.show().then( userHitOK => {
+            if ( !userHitOK ) return false
+            this.element.dataset.shell_title = dialog.get('label')
             return true
         } )
     }
@@ -237,6 +264,33 @@ export class Shell extends Atom {
         const shellSubclassNames = Shell.subclassNames().filter(
             name => name != 'preview' )
         if ( forThis == this ) {
+            // allow changing the environment marginal label
+            if ( this.isEditable() 
+                 && lookup( this.editor, 'shell style' ) == 'boxed')
+                result.unshift( {
+                    text : 'Edit marginal label',
+                    onAction : () => this.editMarginalLabel( )
+                } )
+            // allow toggling shrink-wrap
+            if ( this.isEditable() ) {
+                if (this.element.classList.contains( 'shrink-wrap' )) {
+                  result.unshift( {
+                      text : 'Full width',
+                      onAction : () => this.element.classList.toggle( 'shrink-wrap' )
+                  } )
+                } else {
+                  result.unshift( {
+                      text : 'Fit contents',
+                      onAction : () => this.element.classList.toggle( 'shrink-wrap' )
+                  } )
+                }
+              }
+            // allow toggling indentation iff we're in a style that can see it
+            if ( lookup( this.editor, 'shell style' ) == 'minimal' )
+                result.unshift( {
+                    text : 'Toggle Subproof Indentations',
+                    onAction : () => this.element.classList.toggle( 'unindented' )
+                } )
             // allow changing the environment iff it's editable and some types
             // have been registered for us to let the user browse
             if ( this.isEditable() && shellSubclassNames.length > 0 )
@@ -244,17 +298,13 @@ export class Shell extends Atom {
                     text : 'Change environment type',
                     onAction : () => this.editShellType( shellSubclassNames )
                 } )
-            // allow toggling indentation iff we're in a style that can see it
-            if ( lookup( this.editor, 'shell style' ) == 'minimal' )
-                result.unshift( {
-                    text : 'Toggle Subproof Indentations',
-                    onAction : () => this.element.classList.toggle( 'unindented' )
-                } )
             // allow deleting environments
             result.unshift( {
                 text : 'Remove this environment',
-                onAction : () =>
+                onAction : () => {
+                    this.wasDeleted()
                     this.element.replaceWith( ...this.element.childNodes )
+                  }
             } )
             // // Later when toLCs() for shells gets an upgrade:
             // result.unshift( {
@@ -304,6 +354,8 @@ export class Shell extends Atom {
         result.element.removeAttribute( 'contenteditable' )
         result.setSubclass( subclassName )
         result.element.innerHTML = `<p><br data-mce-bogus="1"></p>`
+        // make the default be unindented
+        result.element.classList.toggle( 'unindented' )
         return result.element
     }
 
@@ -521,9 +573,11 @@ export const install = editor => {
             }
         } )
         const inBeginnerMode =
-            appSettings.get( 'expression editor type' ) == 'Beginner'
+            // appSettings.get( 'expression editor type' ) == 'Beginner'
+            false
         const inAdvancedMode =
-            appSettings.get( 'expression editor type' ) == 'Advanced'
+            // appSettings.get( 'expression editor type' ) == 'Advanced'
+            true
         return shellSubclassNames.map( subclassName => {
             const subclass = Atom.subclasses.get( subclassName )
             if ( inBeginnerMode && !subclass.beginnerFriendly ||
@@ -547,7 +601,7 @@ export const install = editor => {
     editor.ui.registry.addMenuItem( 'togglemeaning', {
         text : 'Show/Hide meaning',
         tooltip : 'Toggle between meaning and presentation views of the document',
-        shortcut : 'alt+0',
+        shortcut : 'Alt+0',
         icon: 'preview',
         onAction : () => {
             const current = lookup( editor, 'shell style' )
@@ -571,107 +625,6 @@ export const install = editor => {
 }
 
 /**
- * A rule is a type of shell with the following features.
- * 
- *  - It labels itself as a "rule" using the attribute the LDE respects for
- *    rules of inference, so that validation will treat it as one.
- *  - It marks itself as a given, which the LDE requires for rules.
- */
-export class Rule extends Shell {
-    static subclassName = Atom.registerSubclass( 'rule', Rule )
-    static advancedName = 'an axiom, definition, or rule'
-    static latexEnvironment = 'lurchrule'
-    finalize ( shellLC ) {
-        shellLC.makeIntoA( 'given' )
-        shellLC.makeIntoA( 'Rule' )
-    }
-    // TODO: debug this.  Copying a rule and pasting it put the conclusion
-    // in as an expression labeled as a subproof.
-    //
-    // contextMenu ( forThis ) {
-    //     const result = super.contextMenu( forThis )
-    //     result.unshift( {
-    //         text : 'Copy rule as a template',
-    //         onAction : () => {
-    //             const copy = this.element.cloneNode( true )
-    //             const makeTemplate = node => {
-    //                 if ( Atom.isAtomElement( node ) ) {
-    //                     const atom = Atom.from( node, this.editor )
-    //                     if ( atom.getMetadata( 'type' ) == 'premise' )
-    //                         node.replaceWith( ...node.childNodes )
-    //                         atom.setMetadata( 'type', 'subproof' )
-    //                     if ( node.tagName == 'DIV' )
-    //                         Array.from( node.childNodes ).forEach( makeTemplate )
-    //                 } else {
-    //                     Array.from( node.childNodes ).forEach( makeTemplate )
-    //                 }
-    //             }
-    //             makeTemplate( copy )
-    //             copyHTMLToClipboard( copy.innerHTML )
-    //         }
-    //     } )
-    //     return result
-    // }
-}
-
-/**
- * A definition is a type of shell that functions exactly like a {@link Rule},
- * except has the word "Definition" on top instead of "Rule".
- */
-export class Definition extends Rule {
-    static subclassName = Atom.registerSubclass( 'definition', Definition )
-    static advancedFriendly = false
-    static latexEnvironment = 'definition'
-}    
-
-/**
- * An axiom is a type of shell that functions exactly like a {@link Rule},
- * except has the word "Axiom" on top instead of "Rule".
- */
-export class Axiom extends Rule {
-    static subclassName = Atom.registerSubclass( 'axiom', Axiom )
-    static advancedFriendly = false
-    static latexEnvironment = 'axiom'
-}
-
-/**
- * A theorem is a type of shell that labels itself as a "theorem" using the
- * attribute the LDE respects for theorem statements, so that validation will
- * treat it as one.
- */
-export class Theorem extends Shell {
-    static subclassName = Atom.registerSubclass( 'theorem', Theorem )
-    static advancedName = 'a theorem, lemma, or corollary'
-    static beginnerFriendly = true
-    static latexEnvironment = 'theorem'
-    finalize ( shellLC ) {
-        shellLC.makeIntoA( 'Theorem' )
-    }
-}
-
-/**
- * A lemma is a type of shell that functions exactly like a {@link Theorem},
- * except has the word "Lemma" on top instead of "Theorem".
- */
-export class Lemma extends Theorem {
-    static subclassName = Atom.registerSubclass( 'lemma', Lemma )
-    static beginnerFriendly = false
-    static advancedFriendly = false
-    static latexEnvironment = 'lemma'
-}
-
-/**
- * A corollary is a type of shell that functions exactly like a {@link Theorem},
- * except has the word "Corollary" on top instead of "Theorem".
- */
-export class Corollary extends Theorem {
-    static subclassName = Atom.registerSubclass( 'corollary', Corollary )
-    static beginnerFriendly = false
-    static advancedFriendly = false
-    static latexEnvironment = 'corollary'
-}
-
-/**
  * A proof is a type of shell that has the word "Proof" on top and no other
  * special functionality.  The LDE will treat it as a container with things
  * inside that should be validated.
@@ -686,6 +639,7 @@ export class Corollary extends Theorem {
 export class Proof extends Shell {
     static subclassName = Atom.registerSubclass( 'proof', Proof )
     static beginnerFriendly = true
+    static advancedFriendly = true
     static latexEnvironment = 'proof'
     finalize ( shellLC ) {
         shellLC.makeIntoA( 'Proof' )
@@ -719,6 +673,7 @@ export class Proof extends Shell {
 export class Subproof extends Shell {
     static subclassName = Atom.registerSubclass( 'subproof', Subproof )
     static beginnerFriendly = true
+    static advancedFriendly = true
     toLatex ( innerLatex ) { return `\n\n${innerLatex}\n\n` }
     getTitle () { return '' }
 }
@@ -731,13 +686,118 @@ export class Subproof extends Shell {
  */
 export class Premise extends Shell {
     static subclassName = Atom.registerSubclass( 'premise', Premise )
-    getTitle () { return '' }
+    static advancedFriendly = true
+    getTitle () { return 'Premise:' }
     finalize ( shellLC ) {
         shellLC.makeIntoA( 'given' )
     }
     toLatex ( innerLatex ) {
         return super.toLatex( '(Rule premise) ' + innerLatex )
     }
+}
+
+
+/**
+ * A rule is a type of shell with the following features.
+ * 
+ *  - It labels itself as a "rule" using the attribute the LDE respects for
+ *    rules of inference, so that validation will treat it as one.
+ *  - It marks itself as a given, which the LDE requires for rules.
+ */
+export class Rule extends Shell {
+  static subclassName = Atom.registerSubclass( 'rule', Rule )
+  static advancedName = 'an axiom, definition, or rule'
+  static advancedFriendly = true
+  static latexEnvironment = 'lurchrule'
+  finalize ( shellLC ) {
+      shellLC.makeIntoA( 'given' )
+      shellLC.makeIntoA( 'Rule' )
+  }
+  // TODO: debug this.  Copying a rule and pasting it put the conclusion
+  // in as an expression labeled as a subproof.
+  //
+  // contextMenu ( forThis ) {
+  //     const result = super.contextMenu( forThis )
+  //     result.unshift( {
+  //         text : 'Copy rule as a template',
+  //         onAction : () => {
+  //             const copy = this.element.cloneNode( true )
+  //             const makeTemplate = node => {
+  //                 if ( Atom.isAtomElement( node ) ) {
+  //                     const atom = Atom.from( node, this.editor )
+  //                     if ( atom.getMetadata( 'type' ) == 'premise' )
+  //                         node.replaceWith( ...node.childNodes )
+  //                         atom.setMetadata( 'type', 'subproof' )
+  //                     if ( node.tagName == 'DIV' )
+  //                         Array.from( node.childNodes ).forEach( makeTemplate )
+  //                 } else {
+  //                     Array.from( node.childNodes ).forEach( makeTemplate )
+  //                 }
+  //             }
+  //             makeTemplate( copy )
+  //             copyHTMLToClipboard( copy.innerHTML )
+  //         }
+  //     } )
+  //     return result
+  // }
+}
+
+/**
+* A definition is a type of shell that functions exactly like a {@link Rule},
+* except has the word "Definition" on top instead of "Rule".
+*/
+export class Definition extends Rule {
+  static subclassName = Atom.registerSubclass( 'definition', Definition )
+  static advancedFriendly = false
+  static latexEnvironment = 'definition'
+}    
+
+/**
+* An axiom is a type of shell that functions exactly like a {@link Rule},
+* except has the word "Axiom" on top instead of "Rule".
+*/
+export class Axiom extends Rule {
+  static subclassName = Atom.registerSubclass( 'axiom', Axiom )
+  static advancedFriendly = false
+  static latexEnvironment = 'axiom'
+}
+
+/**
+* A theorem is a type of shell that labels itself as a "theorem" using the
+* attribute the LDE respects for theorem statements, so that validation will
+* treat it as one.
+*/
+export class Theorem extends Shell {
+  static subclassName = Atom.registerSubclass( 'theorem', Theorem )
+  static advancedName = 'a theorem, lemma, or corollary'
+  static advancedFriendly = true
+  static beginnerFriendly = true
+  static latexEnvironment = 'theorem'
+  finalize ( shellLC ) {
+      shellLC.makeIntoA( 'Theorem' )
+  }
+}
+
+/**
+* A lemma is a type of shell that functions exactly like a {@link Theorem},
+* except has the word "Lemma" on top instead of "Theorem".
+*/
+export class Lemma extends Theorem {
+  static subclassName = Atom.registerSubclass( 'lemma', Lemma )
+  static beginnerFriendly = false
+  static advancedFriendly = false
+  static latexEnvironment = 'lemma'
+}
+
+/**
+* A corollary is a type of shell that functions exactly like a {@link Theorem},
+* except has the word "Corollary" on top instead of "Theorem".
+*/
+export class Corollary extends Theorem {
+  static subclassName = Atom.registerSubclass( 'corollary', Corollary )
+  static beginnerFriendly = false
+  static advancedFriendly = false
+  static latexEnvironment = 'corollary'
 }
 
 /**
@@ -750,6 +810,7 @@ export class Premise extends Shell {
  */
 export class Recall extends Shell {
     static subclassName = Atom.registerSubclass( 'recall', Recall )
+    static advancedFriendly = false
     static latexEnvironment = 'recall'
     finalize ( shellLC ) {
         shellLC.makeIntoA( 'BIH' )

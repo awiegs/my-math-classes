@@ -1,0 +1,1102 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Natural Numbers</title>
+    <meta charset="utf-8" />
+    <meta
+      name="description"
+      content="This is the home page for lurch.plus, the home of the Lurch proof assistant, plus additional content." />
+    <meta
+      name="keywords"
+      content="Lurch, Lurch plus, proof assistant, math academy, summer courses, math proof camp, math proofs, mathematical proof, proof class, proof course, summer math camp, summer math program, summer math class, math camp, math program, math class, MATHCOUNTS, AMC, AIME, USAMO, IMO, ARML, math contest training, math competition training, math olympiad, AP olympiad, Intel Science, ISEF, ISTS, Regeneron competition, Siemens competition, math gifted, summer school program, camps for kids, academic summer camp, summer academy, summer schools, summer school usa, summer academic programs, summer classes, academy of mathematics, university of scranton, Lehigh Valley ARML" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="shortcut icon" href="../../../assets/media/favicon-L+.svg" />
+    <!-- load Font Awesome icon pack 
+     see https://fontawesome.com/search?m=free&o=r for more icons
+-->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+      rel="stylesheet" />
+
+    <link
+      href="//fonts.googleapis.com/css?family=Open+Sans:400,600,400italic,700,300"
+      rel="stylesheet"
+      type="text/css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap"
+      rel="stylesheet" />
+
+    <link rel="stylesheet" href="../../../assets/css/monks.css" />
+    <link rel="stylesheet" href="../../../assets/css/lurchplus.css" />
+
+    <!-- <link rel='stylesheet' href='assets/css/bootstrap.min.css'> -->
+  </head>
+
+  <body class="course">
+    <button id="nav-toggle" aria-label="Toggle navigation">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+    <div id="nav-backdrop"></div>
+
+    <div id="leftnav">
+      <div id="courseinfo">
+        <h1 class="site-title">
+          <a
+            href="/learn/proofs/"
+            target="lurchproofs"
+            aria-label="Go to course home"
+            >Introduction to Mathematical Proof</a
+          >
+        </h1>
+
+        <div class="byline">
+          <a href="mailto:monks@scranton.edu">Ken Monks</a>
+        </div>
+
+        <div class="site">
+          <a href="https://monks.scranton.edu" target="monks"
+            >monks.scranton.edu</a
+          >
+        </div>
+      </div>
+
+      <div id="menu-scroll">
+        <ul class="side-nav"
+          ><li> <a href="/learn/proofs/">1: Introduction</a> </li
+          ><li> <a href="/learn/proofs/ch02/">2: What is a proof?</a> </li
+          ><li>
+            <a href="/learn/proofs/ch03/"
+              >3: The Language of Mathematics</a
+            > </li
+          ><li>
+            <a href="/learn/proofs/ch04/"
+              >4: Reasoning about Mathematics</a
+            > </li
+          ><li> <a href="/learn/proofs/ch05/">5: Propositional Logic</a> </li
+          ><li>
+            <a href="/learn/proofs/ch06/"
+              >6: Predicate Logic and Equality</a
+            > </li
+          ><li class="active">
+            <a href="/learn/proofs/ch07/">7: Natural Numbers</a> </li
+          ><li> <a href="/learn/proofs/ch08/">8: Sequences</a> </li
+          ><li> <a href="/learn/proofs/ch09/">9: Sets</a> </li
+          ><li>
+            <a href="/learn/proofs/ch10/"
+              >10: Integer, Rational, and Real Numbers</a
+            > </li
+          ><li>
+            <a href="/learn/proofs/ch11/">11: Functions and Relations</a> </li
+          ><li> <a href="/learn/proofs/ch12/">12: Expository Proofs</a> </li
+          ><li> <a href="/learn/proofs/ch13/">13: Combinatorial Proofs</a> </li
+          ><li>
+            <a href="/learn/proofs/appendix/">Appendix: Lurch Contexts</a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="sidebar-powered">
+        <!-- <a href="/" class="powered-link" target="lurchplus" rel="noopener noreferrer">
+    <span class="powered-label">powered by</span>
+    <img
+      src="/assets/media/lurchlogo.png"
+      alt="Lurch"
+      class="powered-logo">
+  </a> -->
+        <ul class="side-nav">
+          <li>
+            <a href="/" target="lurchplus" rel="noopener noreferrer">
+              <i class="fa-solid fa-house" aria-hidden="true"></i>Home
+              (lurch.plus)
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- flex column for content-block and footer-block -->
+    <div id="wrap">
+      <div id="content-block" class="problems" style="--chapter: '7'">
+        <div class="title-box">
+          <h1>Chapter 7: Natural Numbers</h1>
+        </div>
+        <p
+          >Together, the formal system that includes Propositional Logic,
+          Predicate Logic, and Equality will be simply called <em>Logic</em>. We
+          can now extend the Logic mathematical system by adding the definition
+          of the natural numbers.</p
+        >
+        <h2>The Peano Postulates</h2>
+        <p
+          >It is possible to define the Natural Numbers and addition,
+          multiplication, and $&lt;$ for those numbers from scratch. One famous
+          way of doing that is with the following axioms which were developed by
+          Giuseppe Peano at the end of the $19^\text{th}$ century. We extend our
+          language by defining two constants, $0$ and $\sigma$.</p
+        >
+        <div class="table-block">
+          <p class="table-title">Peano Axioms</p>
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: left">Name</th>
+                <th style="text-align: left">Rule</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="text-align: left">N0 (existence of $0$)</td>
+                <td style="text-align: left"
+                  >$0$ is a natural number (a constant declaration)</td
+                >
+              </tr>
+              <tr>
+                <td style="text-align: left">N1 (existence of successors)</td>
+                <td style="text-align: left"
+                  >if $n$ is a natural number then $\sigma(n)$ is also a natural
+                  number</td
+                >
+              </tr>
+              <tr>
+                <td style="text-align: left">N2 (uniqueness of predecessor)</td>
+                <td style="text-align: left"
+                  >$\sigma(m)=\sigma(n) \implies m=n$</td
+                >
+              </tr>
+              <tr>
+                <td style="text-align: left">N3 (zero is first)</td>
+                <td style="text-align: left">$0\neq\sigma(n)$</td>
+              </tr>
+              <tr>
+                <td style="text-align: left">N4 (induction)</td>
+                <td style="text-align: left"
+                  >$\mc{P}\left(0\right)\xand\left(\forall
+                  k.\mc{P}\left(k\right)\implies
+                  \mc{P}\left(\sigma(k)\right)\right)\implies\forall
+                  n.\mc{P}\left(n\right)$</td
+                >
+              </tr>
+              <tr>
+                <td style="text-align: left">A0 (additive identity)</td>
+                <td style="text-align: left">$n+0=n$</td>
+              </tr>
+              <tr>
+                <td style="text-align: left">A1 (successor addition)</td>
+                <td style="text-align: left">$m+\sigma(n)=\sigma(m+n)$</td>
+              </tr>
+              <tr>
+                <td style="text-align: left">M0 (multiplication by zero)</td>
+                <td style="text-align: left">$n\cdot 0=0$</td>
+              </tr>
+              <tr>
+                <td style="text-align: left">M1 (successor multiplication)</td>
+                <td style="text-align: left">$m\cdot \sigma(n)=m+m\cdot n$</td>
+              </tr>
+              <tr>
+                <td style="text-align: left">I (order)</td>
+                <td style="text-align: left">$m\leq n \iff \exists k.m+k=n$</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- table-block -->
+        <div class="">
+          <div class="rule-set">
+            <div class="rule-set-head">
+              <p>Peano Axioms</p>
+              <p
+                ><a
+                  href="../../../student.html?load=learn/proofs/rules/Peano.lurch"
+                  class="lurch-open lurch-link"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="Use in Lurch (opens in new tab)">
+                  <span class="lurch-open__label">Use in Lurch</span>
+                  <i
+                    class="fa-solid fa-arrow-up-right-from-square lurch-open__icon"
+                    aria-hidden="true"></i> </a
+              ></p>
+              <!-- rule-set-head -->
+            </div>
+            <p
+              ><span class="m">Declare $0, \sigma, +, \cdot$</span> to be
+              constants.</p
+            >
+            <p
+              ><span class="nm">Axiom N0</span> $0$ is a natural number.<br />
+              <span class="nm">Axiom N1</span> For all natural numbers $n$, the
+              successor of $n$ is a natural number.</p
+            >
+            <div class="rule-grid">
+              <div class="rule-heading">
+                <p>The set $\NN$</p>
+              </div>
+              <div class="Rule">
+                <p
+                  ><span class="nm">Axiom N2 (successor is injective).</span>
+                  <span class="m">If $\sigma(m)=\sigma(n)$</span> then
+                  <span class="m">$m=n$</span>.</p
+                >
+              </div>
+              <div class="Rule">
+                <p
+                  ><span class="nm">Axiom N3 (zero is first).</span>
+                  <span class="m">$0\neq \sigma(n)$</span>.</p
+                >
+              </div>
+              <div class="Rule">
+                <p><span class="nm">Axioms N4 (induction)</span></p>
+                <div class="Premise">
+                  <p
+                    ><em>Given</em><br />
+                    <span class="m quad">$\mc{P}(0)$</span> (base case)</p
+                  >
+                  <div class="Subproof">
+                    <p
+                      ><span class="m quad"
+                        >Let $k$ be such that $\mc{P}(k)$</span
+                      >
+                      (inductive hypothesis)<br />
+                      <span class="m">$\mc{P}(\sigma(k))$</span></p
+                    >
+                  </div>
+                </div>
+                <p
+                  ><em>Conclude</em>
+                  <span class="m">$\forall n.\mc{P}(n)$</span></p
+                >
+              </div>
+              <div class="rule-heading">
+                <p>Addition</p>
+              </div>
+              <div class="Rule">
+                <p
+                  ><span class="nm">Axiom A0 (base case for addition).</span>
+                  <span class="m">$n+0=n$</span>.</p
+                >
+              </div>
+              <div class="Rule">
+                <p
+                  ><span class="nm">Axiom A1 (recursion for addition).</span>
+                  <span class="m">$m+\sigma(n) = \sigma(m+n)$</span>.</p
+                >
+              </div>
+              <div class="rule-heading">
+                <p>Multiplication</p>
+              </div>
+              <div class="Rule">
+                <p
+                  ><span class="nm"
+                    >Axiom M0 (base case for multiplication).</span
+                  >
+                  <span class="m">$n\cdot 0=0$</span>.</p
+                >
+              </div>
+              <div class="Rule">
+                <p
+                  ><span class="nm"
+                    >Axiom M1 (recursion for multiplication).</span
+                  >
+                  <span class="m">$m\cdot\sigma(n) = m+m\cdot n$</span>.</p
+                >
+              </div>
+              <div class="rule-heading">
+                <p>Order</p>
+              </div>
+              <div class="Rule">
+                <p
+                  ><span class="nm">Axiom I (less than or equal to).</span>
+                  <span class="m">$m \leq n \equiv \exists k.m+k=n$</span></p
+                >
+              </div>
+              <!-- rule-grid -->
+            </div>
+            <div class="rule-set-remarks">
+              <ul class="disc">
+                <li
+                  >In all of the axioms, the variables $k,m,n$ are natural
+                  numbers.</li
+                >
+                <li
+                  >In N4 above and in the rest of this chapter, $\mc{P}(n)$ is a
+                  statement about a natural number variable $n$ (i.e., $\mc{P}$
+                  is a lambda expression that returns a statement when applied
+                  to a natural number variable $n$).</li
+                >
+              </ul>
+              <!-- rule-set-remarks -->
+            </div>
+            <!-- rule-set -->
+          </div>
+          <p
+            >While not absolutely necessary, the following definitions are
+            convenient.</p
+          >
+          <div class="Def">
+            <p
+              ><strong class="qu">Definition <span class="thm"></span>.</strong>
+              We define the usual <em>base ten representation</em> of natural
+              numbers as illustrated in the following table.</p
+            >
+            <div class="table-block compact">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="text-align: center">base-ten</th>
+                    <th style="text-align: center">definition</th>
+                    <th style="text-align: center">equivalently</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="text-align: center">1</td>
+                    <td style="text-align: center">$\sigma(0)$</td>
+                    <td style="text-align: center">$\sigma(0)$</td>
+                  </tr>
+                  <tr>
+                    <td style="text-align: center">2</td>
+                    <td style="text-align: center">$\sigma(1)$</td>
+                    <td style="text-align: center">$\sigma(\sigma(0))$</td>
+                  </tr>
+                  <tr>
+                    <td style="text-align: center">3</td>
+                    <td style="text-align: center">$\sigma(2)$</td>
+                    <td style="text-align: center"
+                      >$\sigma(\sigma(\sigma(0)))$</td
+                    >
+                  </tr>
+                  <tr>
+                    <td style="text-align: center">4</td>
+                    <td style="text-align: center">$\sigma(3)$</td>
+                    <td style="text-align: center"
+                      >$\sigma(\sigma(\sigma(\sigma(0))))$</td
+                    >
+                  </tr>
+                  <tr>
+                    <td style="text-align: center">5</td>
+                    <td style="text-align: center">$\sigma(4)$</td>
+                    <td style="text-align: center"
+                      >$\sigma(\sigma(\sigma(\sigma(\sigma(0)))))$</td
+                    >
+                  </tr>
+                  <tr>
+                    <td style="text-align: center">:</td>
+                    <td style="text-align: center">:</td>
+                    <td style="text-align: center">:</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p
+              >So each natural number is defined by the number of $\sigma$'s
+              applied to zero, and the successor of each natural number is the
+              next counting number in order.</p
+            >
+          </div>
+          <h2>Number Theory</h2>
+          <p
+            >Once we have determined the basic properties that follow from our
+            definitions, we can move on to deeper theorems that provide us with
+            important non-obvious insights into the nature of the natural
+            numbers. The study of such theorems is called
+            <em>Number Theory</em>. We begin with some additional definitions.
+            All variables are arbitrary natural numbers. \newline</p
+          >
+          <div class="table-block">
+            <p class="table-title">Number Theory Definitions</p>
+            <table>
+              <thead>
+                <tr>
+                  <th style="text-align: left">Name</th>
+                  <th style="text-align: left">Rule</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="text-align: left">less than</td>
+                  <td style="text-align: left"
+                    >$m&lt;n ~\iff~ m\leq n \xand m\neq n$</td
+                  >
+                </tr>
+                <tr>
+                  <td style="text-align: left">positive</td>
+                  <td style="text-align: left"
+                    >$n$ is positive $~\iff~ 1\leq n$</td
+                  >
+                </tr>
+                <tr>
+                  <td style="text-align: left">divides</td>
+                  <td style="text-align: left"
+                    >$m\mid n ~\iff~ \exists k. n=k\cdot m$</td
+                  >
+                </tr>
+                <tr>
+                  <td style="text-align: left">even</td>
+                  <td style="text-align: left">$n$ is even $~\iff~ 2\mid n$</td>
+                </tr>
+                <tr>
+                  <td style="text-align: left">odd</td>
+                  <td style="text-align: left"
+                    >$n$ is odd $~\iff~ n$ is not even</td
+                  >
+                </tr>
+                <tr>
+                  <td style="text-align: left">composite</td>
+                  <td style="text-align: left"
+                    >$n$ is composite $~\iff~ \exists k. 1&lt;k&lt;n \xand k\mid
+                    n$</td
+                  >
+                </tr>
+                <tr>
+                  <td style="text-align: left">prime</td>
+                  <td style="text-align: left"
+                    >$n$ is prime $~\iff~ 1&lt;n \xand n$ is not composite</td
+                  >
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p
+          >As usual, we can derive useful rules from these succinct
+          definitions.</p
+        >
+        <div class="rule-set">
+          <div class="rule-set-head">
+            <p>Number Theory Definitions</p>
+            <p
+              ><a
+                href="../../../student.html?load=learn/proofs/rules/Number-theory.lurch"
+                class="lurch-open lurch-link"
+                target="_blank"
+                rel="noopener"
+                aria-label="Use in Lurch (opens in new tab)">
+                <span class="lurch-open__label">Use in Lurch</span>
+                <i
+                  class="fa-solid fa-arrow-up-right-from-square lurch-open__icon"
+                  aria-hidden="true"></i> </a
+            ></p>
+            <!-- rule-set-head -->
+          </div>
+          <p
+            ><span class="m"
+              >Declare $\lt$, is, positive, $\mid$, even, odd, composite,
+              prime</span
+            >
+            to be constants.</p
+          >
+          <div class="rule-grid cols-2">
+            <div class="Rule">
+              <p
+                ><span class="nm">less than</span>
+                <span class="m"
+                  >$m \lt n$ $~\equiv~$ $m\leq n$, $m\neq n$</span
+                ></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">positive</span>
+                <span class="m">$n$ is positive $~\equiv~$ $1\leq n$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">divides</span>
+                <span class="m">If $m \mid n$</span> then
+                <span class="m">$n=k\cdot m$ for some $k$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">divides</span>
+                <span class="m">If $n=k\cdot m$</span> then
+                <span class="m">$m \mid n$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">even</span>
+                <span class="m">$n$ is even $~\equiv~$ $2\mid n$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">odd</span>
+                <span class="m">$n$ is odd $~\equiv~$ $n$ is not even</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">composite</span><br />
+                <span class="m">If $n$ is composite</span> then
+                <span class="m">$1&lt;k$, $k&lt;n$,</span> and
+                <span class="m">$k|n$ for some $k$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">composite</span><br />
+                <span class="m">If $1&lt;k$, $k&lt;n$,</span> and
+                <span class="m">$k|n$</span> then
+                <span class="m">$n$ is composite</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">prime</span><br />
+                <span class="m">$n$ is prime $~\equiv~$ $1&lt;n$</span> and
+                <span class="m">$n$ is not composite</span></p
+              >
+            </div>
+            <!-- rule-grid -->
+          </div>
+          <!-- rule-set -->
+        </div>
+        <h2>Applications: Cardinal and Ordinal Numbers</h2>
+        <p
+          >The natural numbers have two very different but very useful
+          applications in mathematics (and outside of mathematics in
+          general).</p
+        >
+        <p
+          >On the one hand, they are useful for <em>counting</em>. For that we
+          use natural numbers to indicate how many items are in some collection.
+          Natural numbers used in this way are examples of
+          <em>cardinal</em> numbers, which are used to measure the relative
+          sizes, or <em>cardinality</em> of collections of items. The branch of
+          mathematics that studies cardinality and counting is called
+          <em>combinatorics</em>. We will discuss that in detail later in the
+          course.</p
+        >
+        <p
+          >On the other hand, natural numbers are useful for
+          <em>numbering</em> items to put them in some order, a first item,
+          second item, and so on. Natural numbers used in this way are examples
+          of <em>ordinal</em> numbers and are used to indicate the relative
+          positions of items in an ordered list of items. Such ordered lists are
+          called <em>sequences</em>, which we study next.</p
+        >
+        <h2 id="problems">Problems</h2>
+        <p
+          >The following theorems can be proved in the order shown. Therefore,
+          you can use an earlier theorem as a rule of inference in the proof of
+          a later theorem but not vice versa. These should be proved with a
+          semiformal proof using the
+          <a href="/learn/proofs/ch06/#shortcuts-sec">shortcuts</a> described in
+          Chapter 6.</p
+        >
+        <div class="pset-head">
+          <p>Properties of the successor function</p>
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Nonzero implies successor</span>$\forall n.
+            n\neq 0\implies \exists m. n=\sigma(m)$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">No number is its own successor</span
+            >$\forall n. n\neq\sigma(n)$</p
+          >
+        </div>
+        <div class="pset-head">
+          <p>Properties of addition</p>
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Alternate definition of $\sigma$</span
+            >$\forall m. \sigma(m) = m+1$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Associativity of addition</span>$\forall
+            m.\forall n.\forall p. m+(n+p)=(m+n)+p$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Additive Identity</span>$\forall m.
+            0+m=m=m+0$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Commutativity of Adding 1</span>$\forall m.
+            1+m=m+1$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Commutativity of addition</span>$\forall
+            m.\forall n.m+n=n+m$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Zero sums</span>$\forall m.\forall n. m+n=0
+            \implies m=n=0$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Cancellation Law of addition</span>$\forall
+            m.\forall n.\forall p. m+p=n+p \implies m=n$</p
+          >
+        </div>
+        <div class="pset-head">
+          <p>Properties of multiplication</p>
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Left multiplication by 0</span>$\forall m.
+            0\cdot m=0$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Multiplicative identity</span>$\forall m.
+            1\cdot m=m=m\cdot 1$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Left Distributive Law</span>$\forall
+            m.\forall n.\forall p. p\cdot(m+n)=p\cdot m+p\cdot n$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Right Distributive Law</span>$\forall m.
+            \forall n.\forall p. (m+n)\cdot p=m\cdot p+n\cdot p$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Commutativity of multiplication</span
+            >$\forall m.\forall n. m\cdot n = n\cdot m$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Associativity of multiplication</span
+            >$\forall m.\forall n. \forall p. (m\cdot n)\cdot p = m\cdot(n\cdot
+            p)$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Zero divisors</span>$\forall m.\forall n.
+            m\neq 0 \xand m\cdot n=0 \implies n=0$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Cancellation Law of multiplication</span
+            >$\forall p.p\neq 0\implies \forall m.\forall n. p\cdot m=p\cdot n
+            \implies m=n$</p
+          >
+        </div>
+        <div class="pset-head">
+          <p>Properties of order</p>
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Nonzero is positive</span>$\forall n. 0\leq
+            n \xand (0&lt;n \xiff n\neq 0)$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Successors are bigger</span>$\forall
+            n.n&lt;\sigma(n)$.</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Alternate definition of $&lt;$</span
+            >$\forall m.\forall n. m&lt;n \xiff \exists k. k\neq 0\xand
+            m+k=n$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Minimum difference</span>$\forall m.\forall
+            n. m&lt;n \xiff \sigma(m)\leq n$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Reflexivity of $\leq$</span>$\forall n.
+            n\leq n$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Antisymmetry of $\leq$</span>$\forall
+            m.\forall n.m\leq n \xand n\leq m \implies m=n$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Transitivity of $\leq$</span>$\forall
+            m.\forall n.\forall p.m\leq n \xand n\leq p \implies m\leq p$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Irreflexivity of $&lt;$</span>$\forall n.
+            \neg(n&lt;n)$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Transitivity of $&lt;$</span>$\forall
+            m.\forall n.\forall p.m&lt;n \xand n&lt;p \implies m&lt;p$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Trichotomy</span>$\forall m.\forall
+            n.m&lt;n \xor m=n \xor n&lt;m$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Translation</span>$\forall m.\forall
+            n.\forall p. m&lt;n \iff m+p&lt;n+p$
+            <em
+              >This also holds if $&lt;$ is replaced by $\leq$ or if
+              $m+p&lt;n+p$ is replaced by $p+m&lt;p+n$.</em
+            ></p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Scaling</span>$\forall m.\forall n.\forall
+            p. p\neq 0 \implies (m&lt;n \iff p\cdot m &lt; p\cdot n$
+            <em
+              >This also holds if $&lt;$ is replaced by $\leq$ or if $p\cdot
+              m&lt;p\cdot n$ is replaced by $$m\cdot p&lt;n\cdot p$$</em
+            ></p
+          >
+        </div>
+        <div class="pset-head">
+          <p>Some Number Theory</p>
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Divisibility of differences</span>$\forall
+            b.b\neq 0\implies \forall m.\forall n.\forall r. b\cdot m=b\cdot n+r
+            \implies \exists p. r=b\cdot p$.</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Division Algorithm - existence</span
+            >$\forall b.b\neq 0\implies \forall a.\exists q.\exists r. a=b\cdot
+            q+r \xand 0\leq r &lt; b$</p
+          >
+          <p
+            ><em
+              >Note that technically we do not need to state that $0\leq r$
+              since every natural number is greater than or equal to zero, but
+              we include it here because the theorem also holds for the set of
+              integers.</em
+            ></p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Division Algorithm - Uniqueness</span>For
+            all $b\neq 0$ and all $a,q,r,s,t$, if $$\begin{align*}
+            &amp;\text{(a) }a=bq+r \text{ and } 0\leq r &lt; b \\ &amp;\text{(b)
+            }a=bs+t \xand 0\leq t&lt;b \end{align*} $$ then $q=s$ and $r=t$.</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Everything divides zero</span>$\forall m.
+            m\mid 0$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Every number divides itself</span>$\forall
+            m. 1\mid m \xand m\mid m$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Divisors are smaller</span>$\forall
+            m.\forall n.n\neq 0 \xand m\mid n \implies m\leq n$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Divisors divide products</span>$\forall
+            m.\forall n.\forall p. m\mid n \implies m\mid n\cdot p$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Common divisors divide sums</span>$\forall
+            m.\forall n.\forall p.p\mid m \xand p\mid n\implies p\mid (m+n)$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Common divisors divide differences</span
+            >$\forall m.\forall n.\forall p.p\mid m \xand p\mid m+n\implies
+            p\mid n$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Divisibility is transitive</span>$\forall
+            m.\forall n.\forall p.m\mid n \xand n\mid p\implies m\mid p$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="thm-label">Mutual divisors are equal</span>$\forall
+            m.\forall n.m\mid n \xand n\mid m\iff m=n$</p
+          >
+        </div>
+        <div class="question">
+          <p>$\forall m. \forall n. m^2\mid n\implies m\mid n$</p>
+        </div>
+        <div class="question">
+          <p>If $m$ is even and $n$ is even then $m+n$ is even.</p>
+        </div>
+        <div class="question">
+          <p>If $n$ is even then $m\cdot n$ is even.</p>
+        </div>
+        <div class="question">
+          <p>$2$ is prime.</p>
+        </div>
+        <div class="question">
+          <p>$4$ is composite.</p>
+        </div>
+        <h1>Number theory theorems</h1>
+        <p
+          >As we did with logic, once we have proven major results about the
+          natural numbers and number theory, we can add those theorems to our
+          list of rules to justify statements in our proofs. Here are some of
+          the major results we can add to our context as we move on to other
+          topics or explore number theory more deeply.</p
+        >
+        <h2>Strong Induction</h2>
+        <p
+          >The following variant of induction is called
+          <em>strong induction</em>.</p
+        >
+        <div class="Theorem fit">
+          <p class="noskip"
+            ><strong>Theorem (strong induction).</strong
+            ><span class="qu"></span> Let $\mc{P}(n)$ be any statement about a
+            natural number variable $n$. Then $$ \mc{P}(0) \xand \Big(\forall
+            k.\big(\forall j.j\leq k\implies \mc{P}(j)\big) \implies
+            \mc{P}(\sigma(k)) \Big) \implies \forall n.\mc{P}\left( n\right)
+            \text{.} $$</p
+          >
+        </div>
+        <p>As usual, we can derive a more useful rule from this theorem.</p>
+        <div class="Rule fit">
+          <p><span class="nm">Strong Induction</span></p>
+          <div class="Premise">
+            <p
+              ><em>Given</em><br />
+              <span class="m">$\mc{P}(0)$</span></p
+            >
+            <div class="Subproof">
+              <p
+                ><span class="m quad"
+                  >Let $k$ be such that $\forall j.j\leq k \implies
+                  \mc{P}(j)$</span
+                ><br />
+                <span class="m">$\mc{P}(\sigma(k))$</span></p
+              >
+            </div>
+          </div>
+          <p><em>Conclude</em> <span class="m">$\forall n.\mc{P}(n)$</span></p>
+        </div>
+        <p
+          >It can be shown that Strong Induction and ordinary Induction are
+          logically equivalent. Namely, we can prove Strong Induction as a
+          theorem in the axiom system defined above, and also if we replace the
+          induction axiom with strong induction, we can prove ordinary induction
+          holds as a theorem.</p
+        >
+        <p><strong>Problem</strong></p>
+        <div class="question">
+          <p
+            >Prove that the original statement of the principle of induction is
+            equivalent to strong induction.</p
+          >
+        </div>
+        <p class="medskip"></p>
+        <p
+          >The following rules are derived from the corresponding problems
+          above.</p
+        >
+        <div class="rule-set">
+          <div class="rule-set-head">
+            <p>Number Theory Theorems</p>
+            <p
+              ><a
+                href="../../../student.html?load=learn/proofs/rules/Number-theory-theorems-Rules.lurch"
+                class="lurch-open lurch-link"
+                target="_blank"
+                rel="noopener"
+                aria-label="Use in Lurch (opens in new tab)">
+                <span class="lurch-open__label">Use in Lurch</span>
+                <i
+                  class="fa-solid fa-arrow-up-right-from-square lurch-open__icon"
+                  aria-hidden="true"></i> </a
+            ></p>
+            <!-- rule-set-head -->
+          </div>
+          <div class="rule-grid cols-2">
+            <div class="Rule">
+              <p
+                ><span class="nm"
+                  >Theorem (alternate definition of $\sigma$) </span
+                >
+                <span class="m">$$\sigma(n)=n+1$$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">Theorem (commutativity of addition)</span>
+                <span class="m">$$m+n=n+m$$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">Theorem (associativity of addition)</span>
+                <span class="m">$$(m+n)+p=m+(n+p)$$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">Theorem (addition of zero on the left)</span>
+                <span class="m">$$0+n=n$$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm"
+                  >Theorem (multiplication by zero on the left)</span
+                >
+                <span class="m">$$0\cdot n=0$$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">Theorem (identity of multiplication)</span></p
+              >
+              <div class="display">
+                <p
+                  ><span class="m">$1\cdot n=n$</span> and
+                  <span class="m">$n\cdot 1=n$</span></p
+                >
+              </div>
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm"
+                  >Theorem (commutativity of multiplication)</span
+                >
+                <span class="m">$$m\cdot n=n\cdot m$$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm"
+                  >Theorem (associativity of multiplication)</span
+                >
+                <span class="m"
+                  >$$(m\cdot n)\cdot p=m\cdot (n\cdot p)$$</span
+                ></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm"
+                  >Theorem (distributive property of $\cdot$ over $+$)</span
+                >
+                <span class="m">$$m\cdot (n+p)=m\cdot n+m\cdot p$$</span>
+                <span class="m">$$(n+p)\cdot m=n\cdot m+p\cdot m$$</span></p
+              >
+            </div>
+            <!-- rule-grid -->
+          </div>
+          <!-- rule-set -->
+        </div>
+
+        <div class="course-page-nav" aria-label="Chapter navigation"
+          ><a
+            class="course-page-nav__link course-page-nav__link--prev"
+            href="/learn/proofs/ch06/">
+            <span class="course-page-nav__title"
+              >&larr; 6: Predicate Logic and Equality</span
+            > </a
+          ><a
+            class="course-page-nav__link course-page-nav__link--next"
+            href="/learn/proofs/ch08/">
+            <span class="course-page-nav__title">8: Sequences &rarr;</span>
+          </a></div
+        >
+      </div>
+
+      <div id="footer-block">
+        <footer class="microfooter" aria-label="Site footer">
+          <span class="microfooter__copyright"> © Kenneth G. Monks </span>
+
+          <span class="microfooter__sep" aria-hidden="true">•</span>
+
+          <a
+            class="microfooter__link"
+            href="https://monks.scranton.edu"
+            target="_blank"
+            rel="noopener noreferrer">
+            monks.scranton.edu
+          </a>
+
+          <span class="microfooter__sep" aria-hidden="true">•</span>
+
+          <a
+            class="microfooter__link"
+            href="https://lurch.plus"
+            target="_blank"
+            rel="noopener noreferrer">
+            lurch.plus
+          </a>
+
+          <span class="microfooter__sep" aria-hidden="true">•</span>
+
+          <a
+            class="microfooter__link"
+            href="https://proveitmath.org"
+            target="_blank"
+            rel="noopener noreferrer">
+            Prove it! Math Academy
+          </a>
+        </footer>
+      </div>
+    </div>
+
+    <script>
+      if (!window.name) window.name = 'lurchproofs'</script
+    ><script src="../../../assets/js/utils.js"></script>
+    <script src="../../../assets/js/mathjax-config.js"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"
+      id="MathJax-script"></script>
+  </body>
+</html>

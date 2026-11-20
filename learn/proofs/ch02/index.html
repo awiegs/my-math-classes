@@ -1,0 +1,619 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>What is a proof?</title>
+    <meta charset="utf-8" />
+    <meta
+      name="description"
+      content="This is the home page for lurch.plus, the home of the Lurch proof assistant, plus additional content." />
+    <meta
+      name="keywords"
+      content="Lurch, Lurch plus, proof assistant, math academy, summer courses, math proof camp, math proofs, mathematical proof, proof class, proof course, summer math camp, summer math program, summer math class, math camp, math program, math class, MATHCOUNTS, AMC, AIME, USAMO, IMO, ARML, math contest training, math competition training, math olympiad, AP olympiad, Intel Science, ISEF, ISTS, Regeneron competition, Siemens competition, math gifted, summer school program, camps for kids, academic summer camp, summer academy, summer schools, summer school usa, summer academic programs, summer classes, academy of mathematics, university of scranton, Lehigh Valley ARML" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="shortcut icon" href="../../../assets/media/favicon-L+.svg" />
+    <!-- load Font Awesome icon pack 
+     see https://fontawesome.com/search?m=free&o=r for more icons
+-->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+      rel="stylesheet" />
+
+    <link
+      href="//fonts.googleapis.com/css?family=Open+Sans:400,600,400italic,700,300"
+      rel="stylesheet"
+      type="text/css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap"
+      rel="stylesheet" />
+
+    <link rel="stylesheet" href="../../../assets/css/monks.css" />
+    <link rel="stylesheet" href="../../../assets/css/lurchplus.css" />
+
+    <!-- <link rel='stylesheet' href='assets/css/bootstrap.min.css'> -->
+  </head>
+
+  <body class="course">
+    <button id="nav-toggle" aria-label="Toggle navigation">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+    <div id="nav-backdrop"></div>
+
+    <div id="leftnav">
+      <div id="courseinfo">
+        <h1 class="site-title">
+          <a
+            href="/learn/proofs/"
+            target="lurchproofs"
+            aria-label="Go to course home"
+            >Introduction to Mathematical Proof</a
+          >
+        </h1>
+
+        <div class="byline">
+          <a href="mailto:monks@scranton.edu">Ken Monks</a>
+        </div>
+
+        <div class="site">
+          <a href="https://monks.scranton.edu" target="monks"
+            >monks.scranton.edu</a
+          >
+        </div>
+      </div>
+
+      <div id="menu-scroll">
+        <ul class="side-nav"
+          ><li> <a href="/learn/proofs/">1: Introduction</a> </li
+          ><li class="active">
+            <a href="/learn/proofs/ch02/">2: What is a proof?</a> </li
+          ><li>
+            <a href="/learn/proofs/ch03/"
+              >3: The Language of Mathematics</a
+            > </li
+          ><li>
+            <a href="/learn/proofs/ch04/"
+              >4: Reasoning about Mathematics</a
+            > </li
+          ><li> <a href="/learn/proofs/ch05/">5: Propositional Logic</a> </li
+          ><li>
+            <a href="/learn/proofs/ch06/"
+              >6: Predicate Logic and Equality</a
+            > </li
+          ><li> <a href="/learn/proofs/ch07/">7: Natural Numbers</a> </li
+          ><li> <a href="/learn/proofs/ch08/">8: Sequences</a> </li
+          ><li> <a href="/learn/proofs/ch09/">9: Sets</a> </li
+          ><li>
+            <a href="/learn/proofs/ch10/"
+              >10: Integer, Rational, and Real Numbers</a
+            > </li
+          ><li>
+            <a href="/learn/proofs/ch11/">11: Functions and Relations</a> </li
+          ><li> <a href="/learn/proofs/ch12/">12: Expository Proofs</a> </li
+          ><li> <a href="/learn/proofs/ch13/">13: Combinatorial Proofs</a> </li
+          ><li>
+            <a href="/learn/proofs/appendix/">Appendix: Lurch Contexts</a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="sidebar-powered">
+        <!-- <a href="/" class="powered-link" target="lurchplus" rel="noopener noreferrer">
+    <span class="powered-label">powered by</span>
+    <img
+      src="/assets/media/lurchlogo.png"
+      alt="Lurch"
+      class="powered-logo">
+  </a> -->
+        <ul class="side-nav">
+          <li>
+            <a href="/" target="lurchplus" rel="noopener noreferrer">
+              <i class="fa-solid fa-house" aria-hidden="true"></i>Home
+              (lurch.plus)
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- flex column for content-block and footer-block -->
+    <div id="wrap">
+      <div id="content-block" class="problems" style="--chapter: '2'">
+        <div class="title-box">
+          <h1>Chapter 2: What is a proof?</h1>
+        </div>
+        <p>Simply stated</p>
+        <div class="note-box">
+          <p
+            >A <em>proof</em> is an <strong>explanation</strong> of why a
+            statement is <strong>objectively valid</strong>.</p
+          >
+        </div>
+        <p>Thus, we have two goals for our proofs.</p>
+        <ul class="disc">
+          <li
+            ><strong>Veracity</strong> - we want to verify that a statement is
+            <em>objectively valid</em>.</li
+          >
+          <li
+            ><strong>Exposition</strong> - we want to be able to effectively and
+            elegantly <em>explain why</em> it is correct.</li
+          >
+        </ul>
+        <p
+          >However, these two goals are sometimes in conflict. So how to achieve
+          both?</p
+        >
+        <h2>The Proof Spectrum</h2>
+        <p
+          >To be certain that our proof is correct, we need to be exceedingly
+          careful and rigorous. To be clear in our exposition, we need to be
+          succinct and elegant.</p
+        >
+        <p
+          >To obtain elegant clarity without sacrificing correctness, we will
+          begin with proofs that are objectively correct by virtue of the fact
+          that they can be verified by a machine. This style of proof is called
+          a <em>formal proof</em>. Then we will use a well-defined set of
+          <em>proof shortcuts</em> to eliminate tedious, repetitive, and
+          uninteresting parts of our proofs. Thus, we will construct a bridge
+          between our formal proofs and the more
+          <em>traditional proofs</em> found in journals, textbooks, and problem
+          solutions.</p
+        >
+        <p
+          ><img
+            src="../../../assets/media/Bridge.png"
+            alt="Proof Bridge"
+            width="80%"
+            style="display: block; margin: 0 auto"
+        /></p>
+        <h2>Rigor and Elegance</h2>
+        <p
+          >On the one hand, mathematical proofs need to be rigorous. Whether
+          submitting a proof to a math contest or submitting research to a
+          journal or science competition, we naturally want it to be correct.
+          One way to ensure our proofs are correct is to have them checked by a
+          computer. (Note that checking to see if a proof is correct is much
+          easier for a computer to do than finding a proof in the first
+          place.)</p
+        >
+        <p
+          >There is much discussion in mathematics today about the value of
+          computer verified proofs and their counterparts - rigorous, detailed,
+          formal proofs. Many mathematicians and computer scientists have been
+          making a strong case for formal, rigorous, computer-verified
+          proofs.</p
+        >
+        <p
+          >On the other hand, most mathematicians are attracted to mathematics
+          because of its intrinsic beauty. A proof that communicates the key
+          ideas of a proof to the reader in a succinct and beautiful way is very
+          effective for its expository properties, even if it is not as rigorous
+          as a formal proof. The legendary mathematician Paul Erdős always spoke
+          of “The Book”, an imaginary book in which God had written down the
+          best and most elegant proofs for mathematical theorems. When he saw
+          any particularly inspiring proof, he would exclaim “That proof is from
+          ‘The Book’!”</p
+        >
+        <p
+          >We will strive for both rigor and elegance in our proofs by building
+          a bridge between highly rigorous formal proofs and more elegant
+          traditional proofs. We begin with formal proofs.</p
+        >
+        <div class="quote">
+          <p
+            >“<em
+              >Math is a cross between art and law. Law is about the reasoning
+              and proving. And the art is because what we’re trying to prove are
+              statements that are somehow elegant. That’s where the artist
+              decides what is art.</em
+            >”<br />
+            – US IMO Coach Po-Shen Loh, after his team won the 2015 IMO</p
+          >
+        </div>
+        <h2>Toy Proofs</h2>
+        <p
+          >We begin by playing with some simple “toy” proof systems that
+          illustrate some aspects of formal proofs.</p
+        >
+        <div class="Def">
+          <p
+            ><strong>Definition <span class="thm"></span>.</strong> A
+            <em>Formal Proof System</em> consists of</p
+          >
+          <ol>
+            <li
+              >A set of expressions and sentences called
+              <em>statements</em>.</li
+            >
+            <li>A subset of those statements called <em>theorems</em>.</li>
+          </ol>
+        </div>
+        <p
+          >Thus, to specify formal proof system we must provide two pieces of
+          information.</p
+        >
+        <ul>
+          <li
+            ><span class="qu"><strong>Language</strong></span> The syntax and
+            grammar that determine the set of valid statements.</li
+          >
+          <li
+            ><span class="qu"><strong>Rules</strong></span> The criteria that
+            specify the set of theorems.</li
+          >
+        </ul>
+        <p
+          >The goal of our game will be to play according to the rules in order
+          to determine when a statement in the system is a theorem. The theorems
+          are, by definition, the valid statements in a formal system. They
+          don’t need to be true <em>about</em> something else, via some
+          interpretation of the statements. To determine a statement is valid in
+          a formal system we only need to verify that it is a theorem.</p
+        >
+        <p
+          >That is not to say that there is no value in interpreting our
+          statements to be talking about something. Indeed, our intuition about
+          what the statements might be talking about is an essential aspect of
+          mastering the art of theorem proving. But such interpretations are not
+          required in order to determine that a particular statement is a
+          theorem in a formal system. This allows us to interpret the statements
+          individually however we like, while maintaining the ability to
+          mechanically, and therefore objectively, show that they are
+          theorems.</p
+        >
+        <p
+          >We do not place any restrictions on what a rule can be in a formal
+          system, other than to say that the rules must provide a mechanism for
+          knowing that a statement is a theorem. There are many ways to do that.
+          Let’s illustrate a few.</p
+        >
+        <div id="trivial-system-ex" class="example-box">
+          <p
+            ><strong>Example <span class="thm"></span>.</strong> Consider a
+            language with only the two statements
+            <span class="m">Gina loves chocolate</span> and
+            <span class="m">Mocha is chocolate</span>. There are four possible
+            distinct formal systems we can define with this language.</p
+          >
+          <ol>
+            <li>No statement is a theorem.</li>
+            <li
+              >Only <span class="m">Gina loves chocolate</span> is a
+              theorem.</li
+            >
+            <li
+              >Only <span class="m">Mocha is chocolate</span> is a theorem.</li
+            >
+            <li>Every statement is a theorem.</li>
+          </ol>
+          <p
+            >In the first and third formal systems
+            <span class="m">Gina loves chocolate</span> is not a theorem, but in
+            the second and fourth it is. Whether it is a theorem, and thus
+            valid, only depends on what formal system we are considering, not
+            whether it is ‘true’ about some actual person named Gina or actual
+            yummy foods called mocha or chocolate.</p
+          >
+        </div>
+        <p
+          >This example illustrates one of the first and simplest mechanisms for
+          determining if a statement is a theorem in a formal system - just list
+          the theorems! Such statements, which are explicitly stated to be
+          theorems, are called <em>axioms</em> of the system. We can also refer
+          to a rule that simply lists axioms as an <em>axiom</em> as well.</p
+        >
+        <p
+          >For small finite languages like the one in the example, specifying
+          the theorems by simply listing them is perfectly reasonable. But in
+          mathematics our formal systems usually have infinitely many statements
+          and infinitely many theorems, so listing them all as axioms
+          individually becomes impractical. But fear not! There are many ways to
+          overcome this limitation. For example, we might give some criterion
+          that tells us which statements are theorems.</p
+        >
+        <div class="example-box">
+          <p
+            ><strong>Example <span class="thm"></span>.</strong> Consider the
+            formal system whose statements are the positive integers, and whose
+            theorems are the even integers. Then we know that in this system
+            $42$ is a theorem but $67$ is not. This system has infinitely many
+            theorems, but we have specified them all by a rule that tells us how
+            to easily determine if a statement is or is not a theorem very
+            easily in a finite amount of time.</p
+          >
+        </div>
+        <p
+          >In more sophisticated mathematical systems there might not be such a
+          simple direct criterion to immediately identify theorems.</p
+        >
+        <h3>Recursively Defined Sets of Theorems</h3>
+        <p
+          >Another way to specify the set of theorems in a formal system is to
+          do it <em>recursively</em>.</p
+        >
+        <div id="cat-dog-ex" class="example-box">
+          <p
+            ><strong>Example <span class="thm"></span>.</strong> Consider the
+            formal system whose set of statements is the set of all English
+            words. The theorems are defined by the following rules.</p
+          >
+          <ul>
+            <li
+              ><strong>Rule 0.</strong> The word <code>cat</code> is a
+              theorem.</li
+            >
+            <li
+              ><strong>Rule 1.</strong> Any English word that is obtained by
+              changing only one letter of a theorem is also a theorem.</li
+            >
+          </ul>
+          <p
+            >To claim that <code>dog</code> is a theorem we can write the
+            following.</p
+          >
+          <div class="Theorem">
+            <p><strong>Theorem.</strong> <code>dog</code></p>
+          </div>
+          <p>and we can prove it as follows.</p>
+          <div class="Proof">
+            <p><strong>Proof.</strong></p>
+            <ol>
+              <li>The statement <code>cat</code> is a theorem by Rule 0.</li>
+              <li
+                >The statement <code>cot</code> is a theorem by applying Rule 1
+                to <code>cat</code> which is a theorem by line 1.</li
+              >
+              <li
+                >The statement <code>dot</code> is a theorem by applying Rule 1
+                to <code>cot</code> which is a theorem by line 2.</li
+              >
+              <li
+                >The statement <code>dog</code> is a theorem by applying Rule 1
+                to <code>dot</code> which is a theorem by line 3.</li
+              >
+            </ol>
+            <p>$\square$</p>
+          </div>
+          <p
+            >The proof in the box is an explanation of why <code>dog</code> is a
+            theorem. Notice that there might be more than one way to prove the
+            same theorem.</p
+          >
+          <!-- example-box -->
+        </div>
+        <p
+          >Alternatively, we could specify the theorems in Example 2.3
+          recursively by saying that $2$ is a theorem, and that whenever $n$ is
+          a theorem, so is $n+2$. Of course, it is much easier to define the
+          theorems explicitly by just saying they are the even integers, but we
+          obtain the same set of theorems either way.</p
+        >
+        <h3>Conditional Theorems</h3>
+        <p
+          >In a recursively defined system it is also often useful to show that
+          a statement $Q$ <em>follows from</em> some other statements
+          $P_1,\ldots,P_n$ in the sense that if those statements were theorems,
+          then we could prove that $Q$ is a theorem, too. We refer to such a
+          fact as a <em>conditional theorem</em>.</p
+        >
+        <div id="cond-thm-ex" class="example-box">
+          <p
+            ><strong>Example <span class="thm"></span>.</strong> Consider the
+            formal system in the previous example. Prove that
+            <code>cool</code> follows from <code>math</code>.</p
+          >
+          <div class="Theorem">
+            <p
+              ><strong>Theorem.</strong> If <code>math</code> then
+              <code>cool</code>.</p
+            >
+          </div>
+          <div class="Proof">
+            <p><strong>Proof.</strong></p>
+            <ol>
+              <li>Suppose <code>math</code> is a theorem.</li>
+              <li
+                >Then <code>mats</code> is a theorem by Rule 1 applied to
+                <code>math</code> which is a theorem by line 1.</li
+              >
+              <li
+                >Then <code>mass</code> is a theorem by Rule 1 applied to
+                <code>mats</code> which is a theorem by line 2.</li
+              >
+              <li
+                >Then <code>moss</code> is a theorem by Rule 1 applied to
+                <code>mass</code> which is a theorem by line 3.</li
+              >
+              <li
+                >Then <code>most</code> is a theorem by Rule 1 applied to
+                <code>moss</code> which is a theorem by line 4.</li
+              >
+              <li
+                >Then <code>cost</code> is a theorem by Rule 1 applied to
+                <code>most</code> which is a theorem by line 5.</li
+              >
+              <li
+                >Then <code>coot</code> is a theorem by Rule 1 applied to
+                <code>cost</code> which is a theorem by line 6.</li
+              >
+              <li
+                >Then <code>cool</code> is a theorem by Rule 1 applied to
+                <code>coot</code> which is a theorem by line 7.</li
+              >
+            </ol>
+            <p>$\square$</p>
+          </div>
+        </div>
+        <p
+          >Notice that <code>math</code> is definitely not a theorem in the
+          formal system defined in Example 2.4 (can you explain why?), but if it
+          were a theorem, then <code>cool</code> would be too. In many formal
+          systems, use of this type of rule allows us to reduce a potentially
+          hard problem of proving that Q is a theorem to a potentially easier
+          problem of proving the statements that Q follows from are theorems.</p
+        >
+        <h1>Problems</h1>
+        <h2>Toy Proof Systems</h2>
+        <p
+          >There are several examples of simple Formal Proof Systems available
+          online at</p
+        >
+        <div class="display">
+          <p
+            ><a href="https://proveitmath.org/toyproofs" target="'_blank'"
+              >proveitmath.org/toyproofs</a
+            ></p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><em>Scrambler!</em> is a formal proof system where the statements
+            are finite sequences of colors. The Rules are permutations of these
+            sequences (and so have one premise and one conclusion each). The
+            goal is to apply the Rules to show that a given sequence of colors
+            is provable from another given sequence of colors.</p
+          >
+          <p
+            >Try to find a strategy for reliably beating each of the difficulty
+            levels (<em>Weeny</em>, <em>Easy</em>, <em>Fun</em>,
+            <em>Three Ring Circus</em>, <em>Frogs</em>, <em>Dizzy</em>,
+            <em>Mutant Frogs</em>, and <em>Death!</em>) of
+            <em>Scrambler!</em> They are listed in increasing order of
+            difficulty. Warning: it can be both addictive and hard!</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><em>Trix Game</em> is a formal proof system where the statements
+            are positive integers. There are only two Rules, both of which take
+            a single positive integer as a premise, and return a single positive
+            integer as their conclusion. This system illustrates a rule that has
+            a condition on when you can use it. The goal is to show that a given
+            positive integer is provable from the premise $1$ in the system.</p
+          >
+          <p
+            >Try to find a strategy for winning. Warning: if you can prove that
+            you will always win this game no matter what integer you have for
+            the goal, you will win money and be famous forever!</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><em>Circle-Dot</em> is a formal proof system where the statements
+            are just finite sequences of one or more circles and dots. This
+            formal system has many of the features in common with actual
+            mathematical formal axiom systems. There are five rules, two of
+            which are axioms. The goal is to prove various circle-dot strings in
+            the system.</p
+          >
+          <div class="parts">
+            <ol>
+              <li
+                >Try to prove Theorem A through Theorem R in the
+                <a
+                  href="https://proveitmath.org/toyproofs/toyproofs-circledot.html"
+                  target="'_blank'"
+                  ><em>Circle-Dot</em> web application</a
+                >.</li
+              >
+              <li
+                >Bonus: Can you explain why every circle-dot expression can be
+                proven in the Circle-Dot toy system, or if not, determine with
+                absolute certainty exactly those expressions which can?</li
+              >
+            </ol>
+          </div>
+        </div>
+        <div class="question">
+          <p
+            >Define a toy formal system as follows. The statements are all
+            nonempty words that only contain the character $\star$. There are
+            two rules.</p
+          >
+          <ul>
+            <li
+              ><strong>Rule 0</strong>: The string $\star\!\star\!\star$ is a
+              theorem.</li
+            >
+            <li
+              ><strong>Rule 1</strong>: The string
+              $\star\!\star\!\star\!\star\!\star$ is a theorem.</li
+            >
+            <li
+              ><strong>Rule 2</strong>: The concatenation of any two theorems is
+              a theorem.</li
+            >
+          </ul>
+          <div class="parts">
+            <ol>
+              <li>Prove all theorems that are less than 12 characters long.</li>
+              <li>What are all of the theorems in this system?</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="course-page-nav" aria-label="Chapter navigation"
+          ><a
+            class="course-page-nav__link course-page-nav__link--prev"
+            href="/learn/proofs/">
+            <span class="course-page-nav__title"
+              >&larr; 1: Introduction</span
+            > </a
+          ><a
+            class="course-page-nav__link course-page-nav__link--next"
+            href="/learn/proofs/ch03/">
+            <span class="course-page-nav__title"
+              >3: The Language of Mathematics &rarr;</span
+            >
+          </a></div
+        >
+      </div>
+
+      <div id="footer-block">
+        <footer class="microfooter" aria-label="Site footer">
+          <span class="microfooter__copyright"> © Kenneth G. Monks </span>
+
+          <span class="microfooter__sep" aria-hidden="true">•</span>
+
+          <a
+            class="microfooter__link"
+            href="https://monks.scranton.edu"
+            target="_blank"
+            rel="noopener noreferrer">
+            monks.scranton.edu
+          </a>
+
+          <span class="microfooter__sep" aria-hidden="true">•</span>
+
+          <a
+            class="microfooter__link"
+            href="https://lurch.plus"
+            target="_blank"
+            rel="noopener noreferrer">
+            lurch.plus
+          </a>
+
+          <span class="microfooter__sep" aria-hidden="true">•</span>
+
+          <a
+            class="microfooter__link"
+            href="https://proveitmath.org"
+            target="_blank"
+            rel="noopener noreferrer">
+            Prove it! Math Academy
+          </a>
+        </footer>
+      </div>
+    </div>
+
+    <script>
+      if (!window.name) window.name = 'lurchproofs'</script
+    ><script src="../../../assets/js/utils.js"></script>
+    <script src="../../../assets/js/mathjax-config.js"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"
+      id="MathJax-script"></script>
+  </body>
+</html>

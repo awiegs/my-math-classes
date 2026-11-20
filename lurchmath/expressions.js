@@ -1,4 +1,7 @@
 
+// NOTE: Beginner and Intermediate modes are deprecated.  Only Advanced mode is
+// supported.  I just haven't got around to cleaning the code yet.
+
 /**
  * This file installs one tool into the user interface, a menu item for
  * inserting an inline atom into the document, one that allows the user to write
@@ -26,6 +29,7 @@ import {
 } from './lde-cdn.js'
 import { DeclarationType } from './declarations.js'
 import { copyHTMLToClipboard } from './utilities.js'
+import { HTMLItem } from './dialog.js'
 
 let converter = null
 
@@ -44,7 +48,8 @@ export const install = editor => {
     getConverter().then( result => converter = result )
     // Define reusable function that initiates the insertion of an expression
     const insertExpression = () => {
-        const mode = appSettings.get( 'expression editor type' )
+        // const mode = appSettings.get( 'expression editor type' )
+        const mode = 'Advanced'
         const atom = Atom.newInline( editor, '',
             mode == 'Beginner' ? {
                 type : 'expression',
@@ -544,12 +549,27 @@ export class Expression extends Atom {
         return result
     }
 
+    /**
+     * The read-only counterpart to {@link module:ExpressionAtoms.Expression#edit
+     * edit()}.  Shows the same advanced-mode dialog used for editing, but with
+     * the Lurch notation locked against changes and with no save performed when
+     * the dialog closes.  Used when the user clicks (or presses Enter on) an
+     * expression atom that is not currently editable, e.g. one shown inside a
+     * document's read-only "context" panel.
+     *
+     * @returns {Promise} same convention as specified in
+     *   {@link module:Atoms.Atom#edit edit() for Atoms}
+     */
+    viewSource () { return this.editInAdvancedMode( true ) }
+
     // Internal use only.
-    // Used by edit() if the user's settings are in advanced mode.
-    editInAdvancedMode () {
+    // Used by edit() if the user's settings are in advanced mode.  Also used
+    // by viewSource(), passing readOnly = true, to show the same dialog
+    // without allowing any changes to be made or saved.
+    editInAdvancedMode ( readOnly = false ) {
         const { lurchNotation } = this.loadAdvancedModeData()
         // set up dialog contents
-        const dialog = new Dialog( 'Edit math', this.editor )
+        const dialog = new Dialog( readOnly ? 'View math' : 'Edit math', this.editor )
         dialog.hideHeader = dialog.hideFooter = true
         const lurchInput = new LongTextInputItem( 'lurchNotation', '', '' )
         dialog.addItem( lurchInput )
@@ -560,6 +580,22 @@ export class Expression extends Atom {
             mathLivePreview.mathLiveEditor.style.padding = '0.5rem 0 0 0.5rem'
         }
         dialog.addItem( mathLivePreview )
+        dialog.addItem(new HTMLItem(
+           readOnly ?
+           `<div id="shortcut-footer">
+              <div id="shortcut-hint">
+               <kbd>Esc</kbd> close
+              </div>
+            </div>
+           ` :
+           `<div id="shortcut-footer">
+              <div id="shortcut-hint">
+               <kbd>Esc</kbd> cancel
+               <span class="sep"></span>
+               <kbd>Enter</kbd> accept
+              </div>
+            </div>
+           `))
         // initialize dialog with data from the atom
         dialog.setInitialData( {
             lurchNotation : lurchNotation,
@@ -574,69 +610,207 @@ export class Expression extends Atom {
                 return null
             }
         }
-        // if they edit the Lurch notation or latex, keep them in sync
-        dialog.onChange = ( _, component ) => {
-            if ( component.name == 'lurchNotation' ) {
-                const converted = convertToLatex()
-                if ( converted || converted === '' )
-                    mathLivePreview.setValue( converted )
-                const lurchInputElement = dialog.querySelector( 'textarea' )
-                if ( lurchInputElement ) {
-                    if ( typeof converted === 'string' ) {
-                        lurchInputElement.classList.remove('badsyntax')
-                    } else {
-                        lurchInputElement.classList.add('badsyntax')
-                    }
-                }
-                dialog.dialog.setEnabled( 'OK', !!converted )
+        // utility used below.  An atom shows one validation marker, so a
+        // transitive chain sharing an atom with unrelated LCs is usually a
+        // parsing accident - the user thought they typed one chain and the
+        // grammar produced a chain plus something else - and we refuse it.
+        // But a chain legitimately sits among siblings whenever it is part of
+        // a larger structure the user can see they are writing, and each such
+        // structure leaves a telltale shorthand symbol next to the chain:
+        // `given>` from `Assume`, `<be` from `(be) such that`, `some>` from
+        // `for some`, `then` from an inline `If ... then ...`, and `<comma`
+        // from a meaningful comma.  Those mark a sequence of givens or a
+        // declaration with a body - something between an expression and an
+        // environment - so the chain is plainly not meant to stand alone.
+        //
+        // Checking the chain's immediate neighbours, rather than the shape of
+        // the whole input, is what lets the user break one long structure
+        // across several atoms for line breaking or interleaved commentary.
+        // Splitting `Assume A, B, C, s<t<w, D` after any comma leaves the
+        // chain with a `<comma` on one side or the other, so `<comma` counts
+        // on either side; the others can only appear on the side shown.
+        const chainPreceders = [ 'given>', '<be', '<comma', 'then' ]
+        const chainFollowers = [ '<comma', 'some>' ]
+        const isStructuralChain = ( LCs, i ) =>
+            chainPreceders.some( s => LCs[i - 1]?.isSymbol( s ) ) ||
+            chainFollowers.some( s => LCs[i + 1]?.isSymbol( s ) )
+        // Parse the user's input into the LCs it means, or return null if the
+        // input is not acceptable.  Both notations come from the same unified
+        // grammar, so checking that the input parses to putdown also guarantees
+        // that it converts to LaTeX for the preview; no separate check of the
+        // LaTeX conversion is needed.  Only a top-level chain is checked: a
+        // chain nested inside a larger expression, as a set builder condition
+        // is, did not split the input into several LCs at all.
+        const convertToLCs = () => {
+            try {
+                const LCs = parse( dialog.get( 'lurchNotation' ), 'lurchNotation' )
+                if ( !( LCs instanceof Array ) ) return null // parsing error
+                if ( LCs.length > 1 && LCs.some( ( LC, i ) =>
+                        LC.isAChain() && !isStructuralChain( LCs, i ) ) )
+                    return null
+                return LCs
+            } catch {
+                return null
             }
         }
+        // if they edit the Lurch notation or latex, keep them in sync
+        // (not needed in read-only mode, since the notation cannot change)
+        if ( !readOnly )
+            dialog.onChange = ( _, component ) => {
+                if ( component.name == 'lurchNotation' ) {
+                    // be sure the user input is acceptable before allowing them to
+                    // enter it
+                    const validSyntax = !!convertToLCs()
+                    const convertedTex = convertToLatex()
+                    if ( validSyntax && typeof convertedTex === 'string' )
+                        mathLivePreview.setValue( convertedTex )
+                    const lurchInputElement = dialog.querySelector( 'textarea' )
+                    if ( lurchInputElement )
+                        lurchInputElement.classList.toggle( 'badsyntax', !validSyntax )
+                    dialog.dialog.setEnabled( 'OK', validSyntax )
+                }
+            }
         // Show it and if they accept any changes, apply them to the atom.
+        // (In read-only mode, never save; just report that nothing changed.)
         const result = dialog.show().then( userHitOK => {
-            if ( !userHitOK || !convertToLatex() ) return false
+            if ( readOnly || !userHitOK || !convertToLCs() ) return false
             this.saveAdvancedModeData( dialog.get( 'lurchNotation' ) )
             this.update()
             return true
         } )
-        dialog.dialog.setEnabled( 'OK', !!convertToLatex() )
+        dialog.dialog.setEnabled( 'OK', !!convertToLCs() )
         // prevent enter to confirm if the input is invalid
         const lurchInputElement = dialog.querySelector( 'textarea' )
         if ( lurchInputElement ) {
             lurchInputElement.classList.add( 'advancedTextArea' )
-            // set the initial height based on the number of current lines
-            // of text in the initial value, plus wordwrap at 45 chars
-            const computeHeight = s => 10 + 24 * Math.max( 1,
-                s.split( '\n' ).reduce( ( total, line ) => 
-                    total + Math.max( 1, Math.ceil( line.length / 45 ) ), 0 ) )
-            lurchInputElement.style.height = computeHeight( lurchNotation ) + 'px'
-            // it should be valid to start since it was saved in the first place
-            lurchInputElement.classList.remove('badsyntax')
+            lurchInputElement.classList.remove( 'badsyntax' )
+            if ( readOnly ) {
+                lurchInputElement.readOnly = true
+                lurchInputElement.classList.add( 'readonly' )
+            }
 
-            // give it focus, but if it ever loses focus, close the dialog
+            // Ensure the textarea starts as a true one-line control when content is short.
+            lurchInputElement.rows = 1
+        
+            // Measure the rendered width of one specific line of text using the same
+            // font properties as the textarea.
+            const measureLineWidth = line => {
+                const probe = document.createElement( 'div' )
+                const style = getComputedStyle( lurchInputElement )
+        
+                probe.textContent = line || 'M'
+                probe.style.position = 'absolute'
+                probe.style.visibility = 'hidden'
+                probe.style.whiteSpace = 'pre'
+                probe.style.font = style.font
+                probe.style.letterSpacing = style.letterSpacing
+                probe.style.textTransform = style.textTransform
+                probe.style.padding = '0'
+                probe.style.border = '0'
+                probe.style.margin = '0'
+                probe.style.boxSizing = 'content-box'
+        
+                document.body.appendChild( probe )
+                const width = probe.getBoundingClientRect().width
+                probe.remove()
+                return width
+            }
+            // fetch the longest line in the input text
+            const longestLine = text =>
+                text.split( '\n' ).reduce(
+                    ( longest, line ) => line.length > longest.length ? line : longest,
+                    ''
+                )
+            // Compute the maximum width available to the textarea inside the dialog.
+            const maxTextareaWidthPx = () => {
+                const toxDialog = lurchInputElement.closest( '.tox-dialog' )
+                const dialogMaxPx = toxDialog
+                    ? parseFloat( getComputedStyle( toxDialog ).maxWidth ) || window.innerWidth * 0.95
+                    : window.innerWidth * 0.95
+        
+                // Allow for dialog/body/wrapper padding and borders.  I looked this up in dev tools
+                const chromePx = 34
+                return dialogMaxPx - chromePx
+            }
+        
+            // the default minimum test area width
+            const minTextareaWidthPx = 446
+        
+            // Width only ever grows automatically.  It never shrinks.
+            const autoSizeWidth = () => {
+                const text = lurchInputElement.value
+                const longest = longestLine( text )
+                const desiredWidthPx = Math.max(
+                    minTextareaWidthPx,
+                    Math.min( measureLineWidth( longest ) + 16, maxTextareaWidthPx() )
+                )
+        
+                const currentWidthPx = lurchInputElement.getBoundingClientRect().width
+                if ( desiredWidthPx > currentWidthPx + 1 ) {
+                    lurchInputElement.style.width = `${desiredWidthPx}px`
+                }
+            }
+        
+            // Height always recomputes from actual wrapped content at the current width.
+            const autoSizeHeight = () => {
+                lurchInputElement.style.height = 'auto'
+                const maxHeightPx = window.innerHeight - 140
+                lurchInputElement.style.height =
+                    `${Math.min( maxHeightPx, lurchInputElement.scrollHeight )}px`
+            }
+        
+            const autoSize = () => {
+                autoSizeWidth()
+                autoSizeHeight()
+            }
+        
+            // Apply initial size based on the stored notation.
+            autoSize()
+        
+            // give it focus, but if it ever loses focus, close the dialog if they won't 
+            // lose changes, otherwise show instructions how to close the dialog
             lurchInputElement.focus()
-            lurchInputElement.addEventListener( 'blur', () =>
-                setTimeout( () => dialog.close() ) )
-
-            lurchInputElement.addEventListener('input', () =>
-                lurchInputElement.style.height = 
-                    computeHeight (lurchInputElement.value ) + 'px' )
-
+            const helpFooter = dialog.querySelector( '#shortcut-footer' )
+            lurchInputElement.addEventListener( 'blur', () => {
+              if ( lurchInputElement.value.trim() === lurchNotation.trim() ) 
+                setTimeout( () => dialog.close() )
+              else {
+                helpFooter?.classList.add( 'visible' )
+                lurchInputElement.focus()
+              }
+            } )
+        
+            // While typing/deleting:
+            //  - width may grow if needed to prevent wrapping
+            //  - width never shrinks automatically
+            //  - height always recomputes
+            lurchInputElement.addEventListener( 'input', autoSize )
+        
+            // Recompute if the browser window changes size while the dialog is open.
+            const onWindowResize = () => autoSize()
+            window.addEventListener( 'resize', onWindowResize )
+        
             // listen for the Enter and Shift+Enter keys        
             lurchInputElement.addEventListener( 'keydown', event => {
                 if ( event.key == 'Enter' ) {
                     if ( event.shiftKey ) {
                         // allow Shift+Enter to add a line
-                    } else if ( convertToLatex() ) {
-                        // Plain enter submits if the input is valid
+                    } else if ( convertToLCs() ) {
                         dialog.querySelector( 'button[title="OK"]' ).click()
+                        event.preventDefault()
+                        event.stopPropagation()
                     } else {
-                        // Plain enter does nothing if the input is invalid
                         event.preventDefault()
                         event.stopPropagation()
                     }
                 }
             } )
+        
+            result.finally( () => {
+                window.removeEventListener( 'resize', onWindowResize )
+            } )
         }
+
         return result
     }
 
@@ -671,7 +845,8 @@ export class Expression extends Atom {
      *   {@link module:Atoms.Atom#edit edit() for Atoms}
      */
     edit () {
-        switch ( appSettings.get( 'expression editor type' ) ) {
+        // switch ( appSettings.get( 'expression editor type' ) ) {
+        switch ( 'Advanced' ) {
             case 'Beginner':
                 return this.editInBeginnerMode()
             case 'Intermediate':

@@ -106,6 +106,13 @@ const rgb2hex = (r, g, b) => {
   return `#${hexR}${hexG}${hexB}`;
 }
 
+/** 
+ * Convert HEX to RGB
+ */ 
+const hex2rgb = hex => hex.replace(/^#/, '')
+                           .match(/.{2}/g)
+                           .map(x => parseInt(x, 16));
+
 const msToTime = ms => {
   // Calculate hours, minutes, and seconds
   const hours = Math.floor(ms / (1000 * 60 * 60))
@@ -113,7 +120,7 @@ const msToTime = ms => {
   const seconds = Math.floor((ms % (1000 * 60))) / 1000
   const Hours = (hours>0) ? `${hours} hr ` : ''
   const Minutes = (minutes>0) ? `${minutes} min ` : ''
-  const Seconds = `${seconds.toFixed(3)} sec`
+  const Seconds = `${(minutes>0) ? Math.round(seconds) : seconds.toFixed(3)} sec`
   return Hours+Minutes+Seconds
 }
 
@@ -126,7 +133,65 @@ const timer = (f,msg='') => {
   console.log(`${msg} ${(Date.now()-start)} ms`)
 }
 
+/** 
+ * Report the time it took to execute function `f`, passed as an argument. 
+ */
+// globalThis.Accumulator = globalThis.Accumulator || { }
+// const profile = (f,name) => {
+//   // initialize the new entry if necessary
+//   if (!Accumulator[name]) Accumulator[name] = { count: 0, time:0, start: [] }
+//   // for recursive calls, push the new start time onto the stack
+//   Accumulator[name].start.push(Date.now())
+//   // run the function to be timed
+//   const ans = f()
+//   // we count the number of calls
+//   Accumulator[name].count++ 
+//   // accumulate the time
+//   Accumulator[name].time += Date.now()-Accumulator[name].start.pop()
+//   // return the result of the function
+//   return ans
+// }
+/** 
+ * Report the time it took to execute function `f`, passed as an argument. 
+ */
+globalThis.Accumulator = globalThis.Accumulator || { }
+const profile = (f,name) => {
+  // initialize the new entry if necessary
+  if (!Accumulator[name]) Accumulator[name] = { count: 0, time:0 }
+  const start = Date.now()
+  // run the function to be timed
+  const ans = f()
+  // count the number of calls
+  Accumulator[name].count++
+  // accumulate the time
+  Accumulator[name].time += Date.now()-start
+  // return the result of the function
+  return ans
+}
+
+// Run any code in Lode (validate something, run the test suite, etc.) and then call
+// `benchmark(Accumulator)` to see a report.
+const benchmark = (data = Accumulator) => {
+
+  console.log('');
+  console.log('| Function Name            |   Count   | Time (ms) |')
+  console.log('|--------------------------|-----------|-----------|')
+  
+  // sum the total time take
+  let total = 0
+  // Iterate over each key in the object
+  for (const key in data) {
+      if (data.hasOwnProperty(key)) {
+          const { count, time } = data[key];
+          console.log(`| ${key.padEnd(24)} | ${String(count).padStart(9)} | ${String(time).padStart(9)} |`);
+          total += time
+      }
+  }
+  console.log('|--------------------------|-----------|-----------|')
+  console.log(`| Total                    |           | ${String(total).padStart(9)} |`)
+}
+
 export default {
   commonInitialSlice, checkExtension, checkFolder, tab, indent, 
-  lineNum, subscript, rgb2hex, msToTime, timer
+  lineNum, subscript, rgb2hex, hex2rgb, msToTime, timer, profile, benchmark
 }

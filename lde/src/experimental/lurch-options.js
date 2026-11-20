@@ -18,7 +18,9 @@
  *   * `avoidLoneEFAs` - the same thing for lone EFAs        
  *   * `avoidLoneElementOfs` - the same thing for lone x∈A's where A is a
  *      metavariable        
+ *   * `processChains` - process chains and equations iff this is true  
  *   * `processEquations` - process equations iff this is true  
+ *   * `processSetBuilders` - process set-builder memberships iff this is true
  *   * `processCases`- process the cases tool iff this is true 
  *   * `autoCases` - similar to avoidLoneMetavars=false. If true, then identify
  *      all Cases-like rules and try to instantiate their univar conclusion with
@@ -46,7 +48,9 @@ export const LurchOptions = {
   avoidLoneMetavars: true ,
   avoidLoneEFAs: true ,    
   avoidLoneElementOfs: true ,    
+  processChains: true ,    
   processEquations: true ,    
+  processSetBuilders: true ,
   processCases: true ,    
   autoCases: false ,
   processCAS: false ,
@@ -58,7 +62,8 @@ export const LurchOptions = {
   badResultMsg: 'indeterminate',
   runStudentTests: false,
   startStudentTest: 0,
-  endStudentTest: Infinity 
+  endStudentTest: Infinity,
+  runAcidTests: true 
 }
 
 ///////////////////////////////////////////////////////////////////////////////

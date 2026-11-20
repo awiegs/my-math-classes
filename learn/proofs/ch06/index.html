@@ -1,0 +1,1189 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Predicate Logic and Equality</title>
+    <meta charset="utf-8" />
+    <meta
+      name="description"
+      content="This is the home page for lurch.plus, the home of the Lurch proof assistant, plus additional content." />
+    <meta
+      name="keywords"
+      content="Lurch, Lurch plus, proof assistant, math academy, summer courses, math proof camp, math proofs, mathematical proof, proof class, proof course, summer math camp, summer math program, summer math class, math camp, math program, math class, MATHCOUNTS, AMC, AIME, USAMO, IMO, ARML, math contest training, math competition training, math olympiad, AP olympiad, Intel Science, ISEF, ISTS, Regeneron competition, Siemens competition, math gifted, summer school program, camps for kids, academic summer camp, summer academy, summer schools, summer school usa, summer academic programs, summer classes, academy of mathematics, university of scranton, Lehigh Valley ARML" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="shortcut icon" href="../../../assets/media/favicon-L+.svg" />
+    <!-- load Font Awesome icon pack 
+     see https://fontawesome.com/search?m=free&o=r for more icons
+-->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+      rel="stylesheet" />
+
+    <link
+      href="//fonts.googleapis.com/css?family=Open+Sans:400,600,400italic,700,300"
+      rel="stylesheet"
+      type="text/css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap"
+      rel="stylesheet" />
+
+    <link rel="stylesheet" href="../../../assets/css/monks.css" />
+    <link rel="stylesheet" href="../../../assets/css/lurchplus.css" />
+
+    <!-- <link rel='stylesheet' href='assets/css/bootstrap.min.css'> -->
+  </head>
+
+  <body class="course">
+    <button id="nav-toggle" aria-label="Toggle navigation">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+    <div id="nav-backdrop"></div>
+
+    <div id="leftnav">
+      <div id="courseinfo">
+        <h1 class="site-title">
+          <a
+            href="/learn/proofs/"
+            target="lurchproofs"
+            aria-label="Go to course home"
+            >Introduction to Mathematical Proof</a
+          >
+        </h1>
+
+        <div class="byline">
+          <a href="mailto:monks@scranton.edu">Ken Monks</a>
+        </div>
+
+        <div class="site">
+          <a href="https://monks.scranton.edu" target="monks"
+            >monks.scranton.edu</a
+          >
+        </div>
+      </div>
+
+      <div id="menu-scroll">
+        <ul class="side-nav"
+          ><li> <a href="/learn/proofs/">1: Introduction</a> </li
+          ><li> <a href="/learn/proofs/ch02/">2: What is a proof?</a> </li
+          ><li>
+            <a href="/learn/proofs/ch03/"
+              >3: The Language of Mathematics</a
+            > </li
+          ><li>
+            <a href="/learn/proofs/ch04/"
+              >4: Reasoning about Mathematics</a
+            > </li
+          ><li> <a href="/learn/proofs/ch05/">5: Propositional Logic</a> </li
+          ><li class="active">
+            <a href="/learn/proofs/ch06/"
+              >6: Predicate Logic and Equality</a
+            > </li
+          ><li> <a href="/learn/proofs/ch07/">7: Natural Numbers</a> </li
+          ><li> <a href="/learn/proofs/ch08/">8: Sequences</a> </li
+          ><li> <a href="/learn/proofs/ch09/">9: Sets</a> </li
+          ><li>
+            <a href="/learn/proofs/ch10/"
+              >10: Integer, Rational, and Real Numbers</a
+            > </li
+          ><li>
+            <a href="/learn/proofs/ch11/">11: Functions and Relations</a> </li
+          ><li> <a href="/learn/proofs/ch12/">12: Expository Proofs</a> </li
+          ><li> <a href="/learn/proofs/ch13/">13: Combinatorial Proofs</a> </li
+          ><li>
+            <a href="/learn/proofs/appendix/">Appendix: Lurch Contexts</a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="sidebar-powered">
+        <!-- <a href="/" class="powered-link" target="lurchplus" rel="noopener noreferrer">
+    <span class="powered-label">powered by</span>
+    <img
+      src="/assets/media/lurchlogo.png"
+      alt="Lurch"
+      class="powered-logo">
+  </a> -->
+        <ul class="side-nav">
+          <li>
+            <a href="/" target="lurchplus" rel="noopener noreferrer">
+              <i class="fa-solid fa-house" aria-hidden="true"></i>Home
+              (lurch.plus)
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- flex column for content-block and footer-block -->
+    <div id="wrap">
+      <div id="content-block" class="problems" style="--chapter: '6'">
+        <div class="title-box">
+          <h1>Chapter 6: Predicate Logic</h1>
+        </div>
+        <p
+          >We can extend Propositional Logic by adding more statements and rules
+          of inference to those we already have in our formal system. This
+          extended formal system is called <em>Predicate Logic</em>.</p
+        >
+        <h2>Bound variables and lambda expressions</h2>
+        <p
+          >Many math expressions contain identifiers which are variables that
+          have no meaning outside of the expression. For example, in an
+          expression like $\sum_{k=0}^n k^3$, the variable $k$ is bound to the
+          expression in the sense that has no meaning outside the expression
+          itself. Indeed, we can replace it with any other letter that is not
+          declared to be a constant to obtain an expression with the exact same
+          meaning, like $\sum_{i=0}^n i^3$.</p
+        >
+        <div class="Def">
+          <p
+            ><strong class="qu">Definition <span class="thm"></span>.</strong> A
+            <em>binding</em> is an expression of the form $x.E$ where $x$ is any
+            non-constant identifier and $E$ is any expression. All occurrences
+            of $x$ in $x.E$ are said to be <em>bound variables</em>. All
+            identifiers in $x.E$ other than constants or bound variables are
+            called <em>free variables</em>. An operator applied to a binding is
+            called a <em>quantifier</em>.</p
+          >
+        </div>
+        <p
+          >We can apply a constant operator $\lambda$ to a binding expression
+          $x.E$ to form the expression $\lambda x.E$ called
+          <em>lambda expressions</em>. Such expressions can be applied to an
+          expression $a$ to form a new expression, $(\lambda x.E)(a)$. Another
+          name for a lambda expression is <em>anonymous function</em> and they
+          can also be written as $x\mapsto E$.</p
+        >
+        <p
+          >These can be <em>evaluated</em> to form the expression obtained by
+          replacing all occurrences of $x$ in $E$ with $(a)$ (no free identifier
+          in $a$ should become bound as a result of the substitution). If we
+          give a name to an anonymous function, e.g., if we define $f$ to be
+          $\lambda x.E$ then the expression $(\lambda x.E)(a)$ is just the usual
+          prefix notation for function application $f(a)$. In this situation we
+          refer to $a$ as the argument of the anonymous function application.</p
+        >
+        <p
+          >For example, $(x\mapsto x^3)(a)$ evaluates to $a^3$. Indeed, in many
+          math textbooks they will write $f(x)=x^3$ instead of $f=(x \mapsto
+          x^3)$, but the latter is usually what they mean. In this example, we
+          have the usual evaluation of functions, e.g., $f(a)=a^3$, $f(2)=2^3$,
+          and $f(x+1)=(x+1)^3$.</p
+        >
+        <p
+          >Notice that simply replacing all occurrences of $x$ in $\lambda x.E$
+          with another identifier that does not appear in $E$ produces a new
+          lambda expression which evaluates to the same thing as the original
+          lambda expression when applied to the same argument. Such lambda
+          expressions are said to be <em>$\alpha$-equivalent</em>.</p
+        >
+        <h2>Quantifiers and Statements of Predicate Logic</h2>
+        <p
+          >Predicate logic extends propositional logic by defining two
+          additional quantifiers.</p
+        >
+        <div class="Def">
+          <p
+            ><strong class="qu">Definition <span class="thm"></span>.</strong>
+            The symbols $\forall$ and $\exists$ are <em>quantifiers</em>. The
+            symbol $\forall$ is called “for all”, “for every”, or “for each”.
+            The symbol $\exists$ is called “for some” or “there exists”.</p
+          >
+        </div>
+        <p>We will encounter more quantifiers beyond just these two.</p>
+        <p
+          >Every statement of Propositional Logic is still a statement of
+          Predicate Logic. In addition, we define the following new
+          statements.</p
+        >
+        <div class="Def">
+          <p
+            ><strong class="qu">Definition <span class="thm"></span></strong> If
+            $x$ is any variable and $\mc{P}(x)$ any statement that results from
+            applying a lambda expression $\mc{P}$ to $x$, then $(\forall
+            x.\mc{P}(x))$ and $(\exists x.\mc{P}(x))$ are both statements.</p
+          >
+        </div>
+        <p
+          >We say that the <em>scope</em> of the quantifier in $(\forall
+          x.W(x))$ and $(\exists x.W(x))$ is everything inside the outer
+          parentheses. Sometimes the outer parentheses are omitted when the
+          scope is clear from context. All occurrences of $x$ throughout the
+          scope are said to be bound by the quantifier.</p
+        >
+        <h2>Declarations</h2>
+        <p
+          >In addition to declaring global constants in our proofs we will also
+          need to be able to introduce new identifiers into our proofs. Just
+          like all expressions and environments, we will have one declaration
+          that is an assumption and one that is a claim.</p
+        >
+        <div class="Def">
+          <p
+            ><strong>Definition <span class="thm"></span></strong><br />
+            A <em>let declaration</em> is an expression of the form</p
+          >
+          <div class="display">
+            <p
+              ><code>Let</code> $x_1,\ldots x_n$
+              <code>be such that</code> $W$</p
+            >
+          </div>
+          <p>A <em>for-some-declaration</em> is an expression of the form</p>
+          <div class="display">
+            <p>$W$ <code>for some</code> $x_1,\ldots x_n$</p>
+          </div>
+          <p
+            >In both declarations $x_1,\ldots x_n$ must be new identifiers at
+            that point in the proof, and $W$ is called the <em>body</em> of the
+            declaration. The scope of each declaration starts at the declaration
+            and continues until the end of the environment containing it.</p
+          >
+        </div>
+        <p
+          >A let-declaration is an assumption that we can name arbitrary things
+          that satisfy the statement $W$. If the phrase
+          <code>be such that</code> $W$ is omitted then a let-declaration is
+          just the assumption that $x_1,\ldots x_n$ are completely arbitrary
+          unspecified things with no restrictions. A for-some-declaration is a
+          claim that we can name arbitrary unspecified things that we know exist
+          and satisfy the statement $W$.</p
+        >
+        <p
+          >Bound variables do not have to be declared. They can be any
+          identifier you like, as long as that identifier is not in the scope of
+          a constant declaration or more than one binding expression that binds
+          it.</p
+        >
+        <h3>Let-environments</h3>
+        <p
+          >Since a let-declaration is an assumption, it can be the premise of a
+          special kind of if-then environment.</p
+        >
+        <div class="Def">
+          <p
+            ><strong class="qu">Definition <span class="thm"></span>.</strong> A
+            <em>let-environment</em> is an if-then environment containing a
+            let-declaration followed by one or more claims.</p
+          >
+        </div>
+        <p
+          >Note that a let-environment will usually not have additional
+          assumptions after the initial let-declaration because usually we will
+          want such assumptions to be included in the body.</p
+        >
+        <h2>Rules of Predicate Logic</h2>
+        <p
+          >Following Gentzen, we have an introduction and elimination rule for
+          each of the two logical quantifiers.</p
+        >
+        <div class="table-block">
+          <p class="table-title">Rules of Propositional Logic</p>
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: left">Name</th>
+                <th style="text-align: left">Rule</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="text-align: left">$\forall+$</td>
+                <td style="text-align: left"
+                  >$(\xlet s \vdash \mc{P}(s)) \vdash \forall x.\mc{P}(x)$</td
+                >
+              </tr>
+              <tr>
+                <td style="text-align: left">$\forall-$</td>
+                <td style="text-align: left"
+                  >$(\forall x.\mc{P}(x)) \vdash \mc{P}(t)$</td
+                >
+              </tr>
+              <tr>
+                <td style="text-align: left">$\exists+$</td>
+                <td style="text-align: left"
+                  >$\mc{P}(t) \vdash \exists x.\mc{P}(x)$</td
+                >
+              </tr>
+              <tr>
+                <td style="text-align: left">$\exists-$</td>
+                <td style="text-align: left"
+                  >$(\exists x.\mc{P}(x)) \vdash \mc{P}(c)\forsome x$</td
+                >
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- table-block -->
+        <div class="">
+          <p
+            >We can also list these rules in if-then rule notation that mirrors
+            how they are used in proofs.</p
+          >
+          <div id="pred-rules" class="rule-set">
+            <div class="rule-set-head">
+              <p>Definition of Quantifiers</p>
+              <p
+                ><a
+                  href="../../../student.html?load=learn/proofs/rules/Pred.lurch"
+                  class="lurch-open lurch-link"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="Use in Lurch (opens in new tab)">
+                  <span class="lurch-open__label">Use in Lurch</span>
+                  <i
+                    class="fa-solid fa-arrow-up-right-from-square lurch-open__icon"
+                    aria-hidden="true"></i> </a
+              ></p>
+              <!-- rule-set-head -->
+            </div>
+            <p
+              ><span class="m">Declare $\forall$, $\exists$</span> to be
+              constants.</p
+            >
+            <div class="rule-grid cols-2">
+              <div class="Rule">
+                <p><span class="nm">$\forall+$</span></p>
+                <div class="Premise">
+                  <p><em>Given</em></p>
+                  <div class="Subproof">
+                    <p
+                      ><span class="m">Let $s$</span> be arbitrary.<br />
+                      <span class="m">$\mc{P(s)}$</span></p
+                    >
+                  </div>
+                </div>
+                <p
+                  ><em>Conclude</em>
+                  <span class="m">$\forall x.\mc{P(x)}$</span></p
+                >
+              </div>
+              <div class="Rule">
+                <p><span class="nm">$\forall-$</span></p>
+                <div class="Premise">
+                  <p
+                    ><em>Given</em><br />
+                    <span class="m">$\forall x.\mc{P(x)}$</span></p
+                  >
+                </div>
+                <p><em>Conclude</em> <span class="m">$\mc{P(t)}$</span></p>
+              </div>
+              <div class="Rule">
+                <p><span class="nm">$\exists+$</span></p>
+                <div class="Premise">
+                  <p
+                    ><em>Given</em><br />
+                    <span class="m">$\mc{P(t)}$</span></p
+                  >
+                </div>
+                <p
+                  ><em>Conclude</em>
+                  <span class="m">$\exists x.\mc{P(x)}$</span></p
+                >
+              </div>
+              <div class="Rule">
+                <p><span class="nm">$\exists-$</span></p>
+                <div class="Premise">
+                  <p
+                    ><em>Given</em><br />
+                    <span class="m">$\exists x.\mc{P(x)}$</span></p
+                  >
+                </div>
+                <p
+                  ><em>Conclude</em>
+                  <span class="m">$\mc{P(c)}\forsome c$</span></p
+                >
+              </div>
+              <!-- rule-grid -->
+            </div>
+            <div class="rule-set-remarks">
+              <p class="smallskip"><em>Restrictions and Remarks:</em></p>
+              <ul class="disc">
+                <li
+                  >In $\forall+$ the metavariable $s$ must be replaced by a new
+                  identifier in the proof, not a compound expression. The
+                  conclusion $\forall x.\mc{P}(x)$ cannot appear in the scope of
+                  the declaration of $s$.</li
+                >
+                <li
+                  >In $\forall-$ and $\exists+$ the metavariable $t$ can be
+                  replaced by compound expressions, not just identifiers. No
+                  free variable in $t$ may become bound when $t$ is substituted
+                  for $x$ in $\mc{P}(x)$ (this is true about applying lambda
+                  expressions in general).</li
+                >
+                <li
+                  >In $\exists+$ the expression $\mc{P(t)}$ can be the
+                  expression obtained by replacing one or more of the
+                  occurrences of $t$ with $x$, not necessarily every occurrence
+                  (by judiciously choosing $\mc{P}$</li
+                >
+                <li
+                  >In $\exists-$ the metavariable $c$ must be replaced by a new
+                  identifier in the proof, not a compound expression.</li
+                >
+              </ul>
+              <!-- rule-set-remarks -->
+            </div>
+            <!-- rule-set -->
+          </div>
+          <h2>Equality</h2>
+          <p
+            >Finally, we can complete our definition of logic by adding the
+            rules of inference for equality. This definition was first
+            introduced by Leibniz.</p
+          >
+          <div class="table-block">
+            <p class="table-title">Definition of $=$</p>
+            <table>
+              <thead>
+                <tr>
+                  <th style="text-align: left">Name</th>
+                  <th style="text-align: left">Rule</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="text-align: left">reflexivity</td>
+                  <td style="text-align: left">$x=x$</td>
+                </tr>
+                <tr>
+                  <td style="text-align: left">substitution</td>
+                  <td style="text-align: left"
+                    >$(x=y),W\vdash,W$ with one or more free occurrences of $x$
+                    replaced by $y$</td
+                  >
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- table-block -->
+        </div>
+        <p
+          >As usual we can also list these rules in if-then rule notation that
+          mirrors how they are used in proofs.</p
+        >
+        <div id="equals-rules" class="rule-set">
+          <div class="rule-set-head">
+            <p>Definition of equals</p>
+            <p
+              ><a
+                href="../../../student.html?load=learn/proofs/rules/Pred.lurch"
+                class="lurch-open lurch-link"
+                target="_blank"
+                rel="noopener"
+                aria-label="Use in Lurch (opens in new tab)">
+                <span class="lurch-open__label">Use in Lurch</span>
+                <i
+                  class="fa-solid fa-arrow-up-right-from-square lurch-open__icon"
+                  aria-hidden="true"></i> </a
+            ></p>
+            <!-- rule-set-head -->
+          </div>
+          <p><span class="m">Declare =</span> to be a constant.</p>
+          <div class="rule-grid cols-2">
+            <div class="Rule">
+              <p
+                ><span class="nm">Reflexivity</span><br />
+                <em>Conclude</em> <span class="m">$x=x$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p><span class="nm">Substitution</span></p>
+              <div class="Premise">
+                <p
+                  ><em>Given</em><br />
+                  <span class="m">$x=y$</span><br />
+                  <span class="m">$W$</span></p
+                >
+              </div>
+              <p
+                ><em>Conclude</em> <span class="m">$W$</span> with one or more
+                free occurrences of $x$ replaced by $y$</p
+              >
+            </div>
+            <!-- rule-grid -->
+          </div>
+          <div class="rule-set-remarks">
+            <p class="smallskip"><em>Restrictions and Remarks:</em></p>
+            <ul class="disc">
+              <li
+                >Notice that in the Reflexive rule there are no inputs, so you
+                can insert a statement of the form $x=x$ into your proof at any
+                time.</li
+              >
+              <li
+                >In the substitution rule, the metavariables $x$ and $y$ can be
+                replaced by compound expressions, not just identifiers. No free
+                variable in $W$ may become bound when $x$ is replaced by $y$ in
+                $W$.</li
+              >
+            </ul>
+            <!-- rule-set-remarks -->
+          </div>
+          <!-- rule-set -->
+        </div>
+        <h2>Problems</h2>
+        <p
+          >Prove each of the following theorems with a formal proof in our
+          system of Natural Deduction. In all of these, $P,Q,R$ are statements
+          (or lambda expressions that return a statement) and the variables
+          $x,y,z$ etc. are of the same unspecified type.</p
+        >
+        <h3>Predicate Logic</h3>
+        <div class="question">
+          <p
+            ><span class="qnum">distributivity</span> $(\forall x.P(x) \xand
+            Q(x)) \iff (\forall y.P(y)) \xand (\forall z.Q(z))$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">distributivity</span> $(\exists x.P(x) \xor
+            Q(x)) \iff (\exists y.P(y)) \xor (\exists z.Q(z))$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">distributivity</span> $(\exists x.P(x) \implies
+            Q(x)) \iff (\forall y.P(y)) \implies (\exists z.Q(z))$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">equivalent predicates</span> $(\forall x.P(x)
+            \iff Q(x)) \implies ((\exists x.P(x))\implies (\exists x.Q(x)))$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">commutativity</span> $(\forall x.\forall
+            y.P(x,y)) \implies (\forall y.\forall x.P(x,y))$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">commutativity</span> $(\exists x.\exists
+            y.P(x,y)) \implies (\exists y.\exists x.P(x,y))$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">one for all</span> $(\exists y.\forall x.P(x,y))
+            \implies (\forall x.\exists y.P(x,y))$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">some are the same</span> $(\forall x.\forall y.
+            P(x,y)) \implies \forall z. P(z,z)$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">De Morgan</span> $\neg (\exists x.P(x)) \iff
+            (\forall x. \neg P(x))$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">De Morgan</span> $\neg (\forall x.P(x)) \iff
+            (\exists x. \neg P(x))$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">quantifier fun</span> $\left(\forall x. P(x)
+            \implies Q(x)\right) \xand \left(\forall x.\neg Q(x)\right) \implies
+            \left(\forall x. \neg P(x)\right)$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">more quantifier fun</span> $(\forall x. P(x)
+            \xor Q(x)) \xand (\exists y. \neg P(y)) \implies (\exists z.
+            Q(z))$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">less than, for example</span> $$(\forall x. \neg
+            P(x, x)) \xand (\forall x. \forall y. \forall z. P(x, y) \xand P(y,
+            z) \implies P(x, z)) \implies (\forall x. \forall y. \neg (P(x, y)
+            \xand P(y, x)))$$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">excluded middle</span> $(\forall x.P(x)) \xor
+            (\exists x.\neg P(x))$</p
+          >
+        </div>
+        <p class="medskip"></p>
+        <p class="medskip"
+          >In the next three theorems, $P$ is a statement not containing $x$.</p
+        >
+        <div class="question">
+          <p
+            ><span class="qnum">de-quantify</span> $(\exists x.Q(x) \xand P)
+            \iff (\exists x.Q(x)) \xand P$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">de-quantify</span> $(\forall x.Q(x) \xor P) \iff
+            (\forall x.Q(x)) \xor P$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">de-quantify</span> $(\forall x.Q(x) \implies P)
+            \iff (\exists x. Q(x)) \implies P$</p
+          >
+        </div>
+        <h3>Equality</h3>
+        <div class="question">
+          <p
+            ><span class="qnum">symmetry of equality</span> $x=y \implies
+            y=x$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">avoiding vacuous types</span> $(\exists x. x=x)
+            \xand (\forall y. P(y)) \implies \exists z. P(z)$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            ><span class="qnum">alternate definitions of unique existence</span>
+            $(\exists x,P(x)\xand \forall y.P(y)\implies y=x) \iff (\exists
+            x.P(x) \xand \forall y.\neg(y=x) \implies \neg P(y))$</p
+          >
+        </div>
+        <div class="question">
+          <p
+            >Let $L(x,y)$ be the statement “$x$ loves $y$” and the domain of
+            discourse of all quantified variables be the set of all people.
+            Write each of the following English statements using only
+            <code>and</code>, <code>or</code>, $\neg$, $\implies$, $\iff$,
+            $\forall$, $\exists$, $L$, $=$, the bound variables $x$ and $y$ and
+            the constants (names of people) given in the sentences. For example,
+            we could express “Everyone loves Bob.” as “$\forall
+            x.L(x,\text{Bob})$”.</p
+          >
+          <div class="parts">
+            <ol>
+              <li>Alice loves everyone.</li>
+              <li>Someone loves Alice.</li>
+              <li>Bob loves Alice, but she does not love him.</li>
+              <li>Everyone loves someone.</li>
+              <li>There is only one person who loves everyone.</li>
+              <li>Someone loves everyone.</li>
+              <li>There is a person who is loved by only one person.</li>
+              <li>Some people do not love themselves.</li>
+              <li>Some people only love themselves.</li>
+              <li>Nobody loves everybody.</li>
+              <li
+                >If everyone loves themselves, then everyone loves someone.</li
+              >
+              <li
+                >If two people love each other, then everyone loves them
+                both.<br />
+                (Note: In English, when “two” is used in this context it usually
+                means “two distinct”.)</li
+              >
+            </ol>
+          </div>
+          <!-- question -->
+        </div>
+        <div class="question">
+          <p
+            >Let $P(x,y)$ be the statement `$x$ is the parent of $y$’ and the
+            domain of discourse of all quantified variables be the set of all
+            people. What do each of the following say in English?</p
+          >
+          <div class="parts cols-3">
+            <ol>
+              <li>$\forall x.\forall y.P(x,y)$</li>
+              <li>$\forall x.\exists y.P(x,y)$</li>
+              <li>$\exists x.\forall y.P(x,y)$</li>
+              <li>$\exists x.\exists y.P(x,y)$</li>
+              <li>$\forall y.\forall x.P(x,y)$</li>
+              <li>$\forall y.\exists x.P(x,y)$</li>
+              <li>$\exists y.\forall x.P(x,y)$</li>
+              <li>$\exists y.\exists x.P(x,y)$</li>
+            </ol>
+          </div>
+          <!-- question  -->
+        </div>
+        <div class="question">
+          <p
+            >Given the first two statements, is the conclusion valid? If not,
+            describe a situation where the conclusion is false. If it is,
+            formalize the argument and give a formal proof.</p
+          >
+          <pre><code>  Everyone fears Dracula.  
+  Dracula only fears me.  
+  Therefore, I *am* Dracula!
+</code></pre>
+        </div>
+        <div class="question">
+          <p
+            >A function $f$ that maps the positive real numbers to other
+            positive real numbers is said to be <em>continuous</em> (C) if and
+            only if $$\forall \varepsilon, \forall x.\exists \delta,\forall y.
+            \left|x-y\right|&lt;\delta \implies
+            \left|f(x)-f(y)\right|&lt;\varepsilon$$ Similarly, $f$ is said to be
+            <em>uniformly continuous</em> (UC) if and only if $$\forall
+            \varepsilon,\exists \delta, \forall x.\forall y.
+            \left|x-y\right|&lt;\delta \implies \left|f(x)-f(y)\right|&lt;
+            \varepsilon$$ (all identifiers other than $f$ have type “positive
+            real”).</p
+          >
+          <div class="parts">
+            <ol>
+              <li
+                >Give a formal proof that every uniformly continuous function is
+                continuous.</li
+              >
+              <li
+                >Find an example of a function $f$ that is continuous but not
+                uniformly continuous.</li
+              >
+            </ol>
+          </div>
+          <p
+            >Note: You can use the fact that the real numbers are closed under
+            multiplication, that constants like, $3$, $\pi$, $\sqrt{2}$, $4/5$
+            are real numbers and properties of real number arithmetic, like
+            $1+1=2$, or $x+x=2x$, justifying these with the black-box reason
+            <span class="m">by arithmetic</span>.</p
+          >
+        </div>
+        <h1 id="shortcuts-sec">Proof Shortcuts</h1>
+        <p
+          >When writing formal proofs we quickly find that the perfect rigor
+          they provide is quickly offset by the extreme length and tediousness
+          of the proofs. Indeed, this aspect of formal proofs is often counter
+          to our goal of elegant and effective exposition. So how can we retain
+          the objective validity and rigor of a formal proof and make our proofs
+          more elegant and expository at the same time?</p
+        >
+        <p
+          >One way is to use well-defined <em>shortcuts</em> that eliminate the
+          tedious, obvious aspects of our proofs, while retaining the rigor and
+          important concepts. In this book we will list some of the shortcuts
+          that mathematicians use in order to shorten the proofs, make them more
+          readable, and eliminate parts of the proof that are repetitive or
+          uninteresting.</p
+        >
+        <h2>Use Famous Theorems</h2>
+        <p
+          >Once we have proven a theorem, we can use it as a new rule of
+          inference. Theorems are like Rules in that they can be used as
+          formulas by considering their free variables to be metavariables.
+          Thus, after we prove the major results about a particular topic, we
+          can add those theorems to the list of rules we can use to prove
+          additional results in new topic.</p
+        >
+        <p
+          >The following theorems about logic are quite well-known, and can
+          usually be used in an expository proof without proving them or even
+          justifying them with a reason (although you should in a formal or
+          semiformal proof).</p
+        >
+        <div class="rule-set">
+          <div class="rule-set-head">
+            <p>Theorems of Logic</p>
+            <p
+              ><a
+                href="../../../student.html?load=learn/proofs/rules/Logic-Theorems.lurch"
+                class="lurch-open lurch-link"
+                target="_blank"
+                rel="noopener"
+                aria-label="Use in Lurch (opens in new tab)">
+                <span class="lurch-open__label">Use in Lurch</span>
+                <i
+                  class="fa-solid fa-arrow-up-right-from-square lurch-open__icon"
+                  aria-hidden="true"></i> </a
+            ></p>
+            <!-- rule-set-head -->
+          </div>
+          <div class="rule-grid cols-2">
+            <div class="Rule">
+              <p
+                ><span class="nm">Theorem (double negative)</span>
+                <span class="m">$\xnot(\xnot W) \equiv W$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">Theorem (excluded middle)</span>
+                <span class="m">$W\xor\xnot W$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">Theorem (commutativity of or)</span><br />
+                <span class="m">If $W\xor V$</span> then
+                <span class="m">$V\xor W$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">Theorem (associativity of or)</span><br />
+                <span class="m"
+                  >$(W\xor V)\xor U \equiv W \xor (V \xor U)$</span
+                ></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">Theorem (ternary and)</span><br />
+                <span class="m">$W\xand V \xand U \equiv W, V, U$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm"
+                  >Theorem (alternate definition of implies)</span
+                >
+                <span class="m">$W\implies V\equiv \xnot W \xor V$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">Theorem (alternate or-)</span><br />
+                <span class="m">If $W\xor V$</span> and
+                <span class="m">$\xnot W$</span> then
+                <span class="m">$V$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">Theorem (alternate or-)</span><br />
+                <span class="m">If $W\xor V$</span> and
+                <span class="m">$\xnot V$</span> then
+                <span class="m">$W$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">Theorem (negated implication)</span><br />
+                <span class="m"
+                  >$\xnot (W\implies V) \equiv W, \xnot V$</span
+                ></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">Theorem (contrapositive)</span><br />
+                <span class="m">If $W\implies V$</span> and
+                <span class="m">$\xnot V$</span> then
+                <span class="m">$\xnot W$</span></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">Theorem (De Morgan)</span><br />
+                <span class="m"
+                  >$\xnot(W \xand V) \equiv \xnot W \xor \xnot V$</span
+                ></p
+              >
+            </div>
+            <div class="Rule">
+              <p
+                ><span class="nm">Theorem (De Morgan)</span><br />
+                <span class="m"
+                  >$\xnot(W \xor V) \equiv \xnot W, \xnot V $</span
+                ></p
+              >
+            </div>
+            <!-- rule-grid -->
+          </div>
+          <!-- rule-set -->
+        </div>
+        <h2 id="derived">Derived Rules: Super-Natural Deduction</h2>
+        <p
+          >Sometimes the most elegant or compact way to state or prove a theorem
+          is not the most useful way to use it as a rule for proving future
+          theorems. In this case we can <em>derive</em> rules from the theorem
+          itself (with proof) that may be more useful for doing proofs. For
+          example, if we have the theorem</p
+        >
+        <div class="Theorem">
+          <p
+            ><strong>Theorem <span class="thm"></span></strong
+            ><span class="qu"></span
+            ><span class="m">$\forall x.x \neq 0 \implies 0\lt x^2$</span></p
+          >
+        </div>
+        <p>We might derive the following rule from that.</p>
+        <div class="Rule">
+          <p
+            ><strong>Theorem 6.6</strong><span class="qu"></span
+            ><span class="m">If $x \neq 0$</span> then
+            <span class="m">$0\lt x^2$</span></p
+          >
+        </div>
+        <p
+          >Since we can easily prove the rule from the theorem, we say that the
+          rule is <em>derived</em> from the theorem, and can refer to it by the
+          same name.</p
+        >
+        <p
+          >Similarly we can replace most of the formal symbols $\implies$,
+          $\iff$, $\forall$, and $\exists$ in our theorem statements with
+          English phrases and sentences as illustrated in the following
+          table.</p
+        >
+        <div class="table-block">
+          <p class="table-title">Some English Equivalents for Formal Symbols</p>
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: left">A theorem such as…</th>
+                <th style="text-align: left">…can be expressed</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="text-align: left">Theorem: $P\implies Q$</td>
+                <td style="text-align: left"
+                  >Theorem: If $P$ then $Q$.<br />Theorem: Given $P$. Then
+                  $Q$.<br />Theorem: Suppose $P$. Then $Q$.</td
+                >
+              </tr>
+              <tr>
+                <td style="text-align: left">Theorem: $P\iff Q$</td>
+                <td style="text-align: left"
+                  >Theorem: $P$ if and only if $Q$.</td
+                >
+              </tr>
+              <tr>
+                <td style="text-align: left">Theorem: $\forall n.P(n)$</td>
+                <td style="text-align: left">Theorem: $P(n)$.</td>
+              </tr>
+              <tr>
+                <td style="text-align: left"
+                  >Theorem: $\forall n. P(n)\implies Q(n)$</td
+                >
+                <td style="text-align: left"
+                  >Theorem: If $P(n)$ then $Q(n)$.</td
+                >
+              </tr>
+              <tr>
+                <td style="text-align: left">Theorem: $\exists n. P(n)$</td>
+                <td style="text-align: left">Theorem: $P(n)$ for some $n$.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p
+          >In each case, since we have eliminated the corresponding formal
+          symbol, we no longer need to end the proof with a $\forall+$ or
+          $\implies+$ statement.</p
+        >
+        <p
+          >A similar situation arises when making rules for definitions, many of
+          which are equivalences involving the predicate logic quantifiers. In
+          those cases we need a separate introduction and elimination rule
+          because only one of them requires a declaration.</p
+        >
+        <div class="table-block">
+          <p class="table-title">Derived Rules from Definitions</p>
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: left">Definition Form</th>
+                <th style="text-align: left">Introduction ($+$) Rule</th>
+                <th>Elimination ($-$) Rule</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="text-align: left">$x$ is $y \iff \forall z.P(z)$</td>
+                <td style="text-align: left"
+                  >$($Let $s \vdash P(s)) \vdash x$ is $y$</td
+                >
+                <td>$x$ is $y\vdash P(t)$</td>
+              </tr>
+              <tr>
+                <td style="text-align: left">$x$ is $y \iff \exists z.P(z)$</td>
+                <td style="text-align: left">$P(t) \vdash x$ is $y$</td>
+                <td>$x$ is $y\vdash P(c)$ for some $c$</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <h2>Use Transitive Chains!</h2>
+        <p
+          >While Leibniz definition of equality is very succinct, in practice it
+          becomes tedious to constantly use substitution, reflexivity, symmetry
+          and transitivity explicitly many times in our proofs to reach our
+          desired conclusion. To deal with this, mathematicians use a convenient
+          device called a <em>transitive chain</em>.</p
+        >
+        <div class="Def">
+          <p
+            ><strong class="qu">Definition <span class="thm"></span>.</strong>
+            Let $\langle r_1,r_2,\ldots,r_n\rangle$ be a sequence of binary
+            operators on a set $A$. We say such a sequence is
+            <em>mutually transitive</em> if and only if for every $a,b,c\in A$,
+            and for every $1\leq i\leq j\leq n$, $$a\,r_i\,b \xand b\,r_j\,c
+            \implies a\,r_j\,c$$ and $$a\,r_j\,b \xand b\,r_i\,c \implies
+            a\,r_j\,c$$</p
+          >
+        </div>
+        <p
+          >Examples of mutually transitive operator sequences on the set of
+          integers include: $\langle = \rangle$, $\langle =, \leq\rangle$,
+          $\langle =, &lt; \rangle$, $\langle =, \leq, &lt;\rangle$, $\langle
+          &gt;, \geq\rangle$, $\langle =, \equiv\rangle$ and $\langle =, \mid
+          \rangle$. An example of a sequence of mutually transitive logical
+          operators is $\langle\iff,\implies\rangle$.</p
+        >
+        <p
+          >Given such a sequence we can often shorten our proofs by using the
+          <em>transitive chain</em> notation $$ \begin{align*} x_1\,&amp;
+          r_{i_1}\, x_2 \\ &amp; r_{i_2}\, x_3 \\ &amp; r_{i_3}\, x_4 \\ &amp;
+          \vdots \\ &amp; r_{i_k}\, x_{k+1} \end{align*} $$ which is defined to
+          be an abbreviation for $$ \begin{align*} x_1\, &amp; r_{i_1}\, x_2 \\
+          x_2\, &amp; r_{i_2}\, x_3 \\ x_3\, &amp; r_{i_3}\, x_4 \\ &amp; \vdots
+          \\ x_{k}\, &amp; r_{i_k}\, x_{k+1} \end{align*} $$</p
+        >
+        <p
+          >Because the operators are mutually transitive we can use this entire
+          block as a single premise to justify that $x_1 r_\alpha x_{k+1}$ where
+          $\alpha$ is the largest subscript among $i_1,\ldots,i_k$. As a
+          shortcut, any such deduction can be omitted and the entire block of
+          lines used in its place in the proof.</p
+        >
+        <div class="example-box">
+          <p
+            ><strong class="qu">Example <span class="thm"></span></strong> In
+            the following transitive chain, the sequence of operators, $\langle
+            =,\leq,&lt;\rangle$, is mutually transitive. $$ \begin{align*}
+            0&amp;\leq (a+1)^2 \\ &amp;= a^2+2a+1 \\ &amp;&lt; (a^2+2a+1)+1 \\
+            &amp;= a^2+2(a+1) \end{align*} $$</p
+          >
+          <p
+            >Thus, we can conclude from this transitive chain that
+            $0&lt;a^2+2(a+1)$.</p
+          >
+        </div>
+        <h2>Identify certain expressions</h2>
+        <p
+          >Sometimes it is convenient to have more than one notation for the
+          same expression. We will identify the following expressions.</p
+        >
+        <table class="compact">
+          <thead>
+            <tr>
+              <th style="text-align: center">This expression…</th>
+              <th style="text-align: center">…means the same thing as</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="text-align: center">$\xnot W$</td>
+              <td style="text-align: center">$\xnot W$</td>
+            </tr>
+            <tr>
+              <td style="text-align: center">$x\neq y$</td>
+              <td style="text-align: center">$\xnot (x=y)$</td>
+            </tr>
+            <tr>
+              <td style="text-align: center">$x\notin A$</td>
+              <td style="text-align: center">$\xnot (x\in A)$</td>
+            </tr>
+            <tr>
+              <td style="text-align: center">$f$ is not continuous</td>
+              <td style="text-align: center">not ($f$ is continuous)</td>
+            </tr>
+            <tr>
+              <td style="text-align: center">Let $x\in A$</td>
+              <td style="text-align: center">Let $x$ be such that $x\in A$</td>
+            </tr>
+          </tbody>
+        </table>
+        <h2>Shorthand definitions - Unique Existence</h2>
+        <p
+          >In addition to showing something exists, we often also want to know
+          if the thing that exists is unique. This occurs frequently enough that
+          we make special notation to say this compactly.</p
+        >
+        <div class="Def">
+          <p
+            ><strong class="qu">Definition <span class="thm"></span>.</strong>
+            We define the quantifier $\exists!$ such that for any expression
+            $\mc{P}(x)$ we have $$(\exists! x.\mc{P}(x)) \iff \left(\exists
+            x.\mc{P}(x) \xand \forall y.\mc{P}(y)\implies y=x\right)$$</p
+          >
+        </div>
+
+        <div class="course-page-nav" aria-label="Chapter navigation"
+          ><a
+            class="course-page-nav__link course-page-nav__link--prev"
+            href="/learn/proofs/ch05/">
+            <span class="course-page-nav__title"
+              >&larr; 5: Propositional Logic</span
+            > </a
+          ><a
+            class="course-page-nav__link course-page-nav__link--next"
+            href="/learn/proofs/ch07/">
+            <span class="course-page-nav__title"
+              >7: Natural Numbers &rarr;</span
+            >
+          </a></div
+        >
+      </div>
+
+      <div id="footer-block">
+        <footer class="microfooter" aria-label="Site footer">
+          <span class="microfooter__copyright"> © Kenneth G. Monks </span>
+
+          <span class="microfooter__sep" aria-hidden="true">•</span>
+
+          <a
+            class="microfooter__link"
+            href="https://monks.scranton.edu"
+            target="_blank"
+            rel="noopener noreferrer">
+            monks.scranton.edu
+          </a>
+
+          <span class="microfooter__sep" aria-hidden="true">•</span>
+
+          <a
+            class="microfooter__link"
+            href="https://lurch.plus"
+            target="_blank"
+            rel="noopener noreferrer">
+            lurch.plus
+          </a>
+
+          <span class="microfooter__sep" aria-hidden="true">•</span>
+
+          <a
+            class="microfooter__link"
+            href="https://proveitmath.org"
+            target="_blank"
+            rel="noopener noreferrer">
+            Prove it! Math Academy
+          </a>
+        </footer>
+      </div>
+    </div>
+
+    <script>
+      if (!window.name) window.name = 'lurchproofs'</script
+    ><script src="../../../assets/js/utils.js"></script>
+    <script src="../../../assets/js/mathjax-config.js"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"
+      id="MathJax-script"></script>
+  </body>
+</html>

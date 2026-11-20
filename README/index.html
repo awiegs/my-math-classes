@@ -1,0 +1,361 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <title></title>
+    <meta charset="utf-8" />
+    <meta
+      name="description"
+      content="This is the home page for lurch.plus, the home of the Lurch proof assistant, plus additional content." />
+    <meta
+      name="keywords"
+      content="Lurch, Lurch plus, proof assistant, math academy, summer courses, math proof camp, math proofs, mathematical proof, proof class, proof course, summer math camp, summer math program, summer math class, math camp, math program, math class, MATHCOUNTS, AMC, AIME, USAMO, IMO, ARML, math contest training, math competition training, math olympiad, AP olympiad, Intel Science, ISEF, ISTS, Regeneron competition, Siemens competition, math gifted, summer school program, camps for kids, academic summer camp, summer academy, summer schools, summer school usa, summer academic programs, summer classes, academy of mathematics, university of scranton, Lehigh Valley ARML" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="shortcut icon" href="../assets/media/favicon-L+.svg" />
+    <!-- load Font Awesome icon pack 
+     see https://fontawesome.com/search?m=free&o=r for more icons
+-->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+      rel="stylesheet" />
+
+    <link
+      href="//fonts.googleapis.com/css?family=Open+Sans:400,600,400italic,700,300"
+      rel="stylesheet"
+      type="text/css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&display=swap"
+      rel="stylesheet" />
+
+    <link rel="stylesheet" href="../assets/css/monks.css" />
+    <link rel="stylesheet" href="../assets/css/lurchplus.css" />
+
+    <!-- <link rel='stylesheet' href='assets/css/bootstrap.min.css'> -->
+  </head>
+
+  <body>
+    <button id="nav-toggle" aria-label="Toggle navigation">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+    <div id="nav-backdrop"></div>
+
+    <div id="leftnav">
+      <a href="/" target="lurchplus" rel="noopener noreferrer">
+        <img
+          src="../assets/media/lurchlogo.png"
+          style="margin: 0px; border-radius: 5px; display: block"
+          width="190px" />
+      </a>
+
+      <ul class="menu-root"> </ul>
+
+      <div id="contact">
+        <div>
+          <a href="mailto:monks@scranton.edu">Ken Monks</a>
+        </div>
+        <div>
+          <a href="https://monks.scranton.edu" target="_blank"
+            >monks.scranton.edu</a
+          >
+        </div>
+        <div>
+          <a href="https://proveitmath.org" target="_blank">proveitmath.org</a>
+        </div>
+        <div>
+          <a href="https://github.com/kenmonks/lurch" target="_blank"
+            >github.com/kenmonks/lurch</a
+          >
+        </div>
+      </div>
+    </div>
+
+    <!-- flex column for content-block and footer-block -->
+    <div id="wrap">
+      <div id="content-block">
+        <h1>Lurch.plus — Eleventy Source Conventions</h1>
+        <p
+          >This folder contains the <strong>Eleventy source</strong> for
+          https://lurch.plus.<br />
+          Everything here exists to build the static site; nothing here is
+          deployed directly.</p
+        >
+        <h2>Core ideas</h2>
+        <ul>
+          <li><strong>Markdown-first</strong> content</li>
+          <li
+            ><strong>YAML for configuration/data</strong> whenever possible</li
+          >
+          <li
+            ><strong>Minimal Eleventy magic</strong>, but consistent use of its
+            data cascade</li
+          >
+          <li
+            >Site styling and math rendering match the Lurch editor exactly</li
+          >
+        </ul>
+        <h2>Folder structure</h2>
+        <ul>
+          <li>
+            <p><code>data/</code></p>
+            <ul>
+              <li>Global site data (YAML/JS)</li>
+              <li>Examples: <code>site.yml</code>, <code>nav.yml</code></li>
+              <li
+                >Available in templates as <code>site</code>, <code>nav</code>,
+                etc. (namespaces)</li
+              >
+            </ul>
+          </li>
+          <li>
+            <p><code>includes/</code></p>
+            <ul>
+              <li><code>layouts/</code> — Liquid layouts (pages)</li>
+              <li
+                ><code>partials/</code> — Reusable UI fragments (menus, headers,
+                etc.)</li
+              >
+            </ul>
+          </li>
+          <li>
+            <p><code>assets/</code></p>
+            <ul>
+              <li>Static assets copied through as-is</li>
+              <li>CSS, JS, images, icons</li>
+            </ul>
+          </li>
+          <li>
+            <p
+              >Content folders (e.g. <code>learn/</code>,
+              <code>theory/</code>)</p
+            >
+            <ul>
+              <li>Markdown source files</li>
+              <li
+                >Optional per-folder defaults via <code>*.meta.yml</code> or
+                <code>*.yml</code> where * is the folder name.</li
+              >
+            </ul>
+          </li>
+        </ul>
+        <h2
+          >Directory defaults (<code>*.meta.yml</code> or
+          <code>*.yml</code>)</h2
+        >
+        <p
+          >Folders may contain a YAML file named after the folder, with suffix
+          <code>.meta.yml</code>. or <code>.yml</code></p
+        >
+        <p
+          >Example: <code>learn/proofs/proofs.yml</code> or
+          <code>learn/proofs/proofs.meta.yml</code></p
+        >
+        <p>These files define defaults like:</p>
+        <ul>
+          <li><code>layout</code></li>
+          <li><code>navMode</code></li>
+          <li><code>courseId</code></li>
+        </ul>
+        <p>They apply to all Markdown files in that folder and below.</p>
+        <h2>Layouts</h2>
+        <p>Layouts live in <code>includes/layouts/</code>.</p>
+        <p>Common layouts:</p>
+        <ul>
+          <li><code>lurchplus.liquid</code> — project pages</li>
+          <li><code>course.liquid</code> — course / textbook content</li>
+        </ul>
+        <p>Layouts are applied via directory defaults or front matter.</p>
+        <h2>Navigation</h2>
+        <p
+          >Navigation is <strong>hand-rolled</strong>, not Eleventy
+          TOC-based.</p
+        >
+        <ul>
+          <li>Menu rendering: <code>includes/partials/menu.liquid</code></li>
+          <li>Behavior (collapse/expand): <code>assets/js/utils.js</code></li>
+          <li>Structure defined in <code>data/nav.yml</code></li>
+          <li>Pages select a navigation mode via <code>navMode</code></li>
+        </ul>
+        <h2>Math</h2>
+        <ul>
+          <li>Math rendered with MathJax</li>
+          <li>Custom LaTeX macros defined globally</li>
+          <li>Styling matches Lurch editor contexts exactly</li>
+        </ul>
+        <h2>Documentation-only files</h2>
+        <p
+          >Files like this README exist for developers only and are excluded
+          from output using:</p
+        >
+        <pre><code>eleventyExcludeFromCollections: true
+</code></pre>
+        <h2>Navigation &amp; Collections (Eleventy Quick Reference)</h2>
+        <h3>Eleventy Navigation Plugin — What it is</h3>
+        <p
+          >Eleventy’s navigation plugin builds a tree structure of pages based
+          on metadata you add to front matter. That front matter describes the
+          ancestor-dependency tree.</p
+        >
+        <p>Minimal front matter example</p>
+        <pre><code>eleventyNavigation:
+  key: &quot;Intro to Proof&quot;
+</code></pre>
+        <p>Nested example:</p>
+        <pre><code>eleventyNavigation:
+  key: &quot;Chapter 1&quot;
+  parent: &quot;Intro to Proof&quot;
+  order: 1
+</code></pre>
+        <p>Accessing the navigation tree (Liquid)</p>
+        <pre><code>
+</code></pre>
+        <p>Start from a specific root:</p>
+        <pre><code>
+</code></pre>
+        <p>this gets that node and</p>
+        <p
+          >Each node typically contains: • title • url • key • children (array)
+          • any custom fields you added in eleventyNavigation</p
+        >
+        <h2>Eleventy collections — What they are</h2>
+        <p
+          >A collection is just an array of pages with metadata. Each item
+          represents one rendered page and includes: • url • inputPath •
+          outputPath • merged data (front matter + folder + global)</p
+        >
+        <p
+          >Built-in collection • collections.all → all renderable pages (most
+          common input for navs, indexes, sitemaps)</p
+        >
+        <p>Custom collections (in .eleventy.js)</p>
+        <pre><code>eleventyConfig.addCollection(&quot;chapters&quot;, api =&gt;
+  api.getFilteredByGlob(&quot;./src/learn/proofs/ch*.md&quot;)
+)
+</code></pre>
+        <p>Use in Liquid:</p>
+        <pre><code>
+</code></pre>
+        <h2>My Custom Markdown classes</h2>
+        <p
+          >Using the <code>markdown-it-div</code> and
+          <code>markdown-it-attr</code> plugins allows me to define custom
+          markdown wrappers and attributes via css.</p
+        >
+        <h3>Mult-column Blocks (equally spaced)</h3>
+        <pre><code class="language-markdown">Usage:
+::: cols cols-2 middle gap-md stack-sm
+  ::: col
+    
+  :::   
+  ::: col
+  
+  :::
+:::
+</code></pre>
+        <p
+          >Note that markdown allows fenced blocks to be indented up to 3 spaces
+          for nesting (the indentation of the fence is removed from the
+          indentation of the content as well)</p
+        >
+        <p><em>Options:</em></p>
+        <ul>
+          <li>cols-2, cols-3, cols-4</li>
+          <li>gap-sm, gap-md, gap-lg</li>
+          <li>left, center, right</li>
+          <li>top, middle, bottom</li>
+        </ul>
+        <h3>Side-by-side panes</h3>
+        <pre><code>Usage:
+::: split left-25 
+  ::: pane center middle
+    
+  :::   
+  ::: pane left
+  
+  :::
+:::
+</code></pre>
+        <p
+          >Note that markdown allows fenced blocks to be indented up to 3 spaces
+          for nesting (the indentation of the fence is removed from the
+          indentation of the content as well)</p
+        >
+        <p><em>Options:</em></p>
+        <ul>
+          <li
+            >split
+            <ul>
+              <li
+                >left-20, 25, 33, 40, 50, 60, 66, 75, 80 (thirds, fourths,
+                fifths)</li
+              >
+            </ul>
+          </li>
+          <li
+            >pane
+            <ul>
+              <li>gap-sm, gap-md, gap-lg</li>
+              <li>left, center, right</li>
+              <li>top, middle, bottom</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+
+      <div id="footer-block">
+        <footer>
+          <div class="container">
+            <div class="row">
+              <div class="col-xs-12">
+                <h3>
+                  <a href="http://monks.scranton.edu/" target="_blank"
+                    >Kenneth G. Monks</a
+                  >
+                </h3>
+                Department of Mathematics<br />
+                University of Scranton<br />
+                Scranton, PA 18510
+              </div>
+            </div>
+            <div class="row" id="more-contact-info">
+              <div class="col-xs-12 col-md-4" id="email-footer">
+                <img
+                  src="../assets/media/envelope.svg"
+                  style="vertical-align: middle; padding-right: 0.2em" />
+                <a href="mailto:monks@scranton.edu" target="_blank"
+                  >monks@scranton.edu</a
+                >
+              </div>
+              <div class="col-xs-12 col-md-4 center" id="lurch-footer">
+                <span class="checkmark" style="padding-right: 0.2em">✓</span>
+                <a href="http://lurch.plus">lurch.plus</a>
+              </div>
+              <div class="col-xs-12 col-md-4" id="proveit-footer">
+                <img
+                  src="../assets/media/therefore.svg"
+                  style="
+                    vertical-align: middle;
+                    padding-right: 0.2em;
+                    height: 0.8em;
+                  " />
+                <a href="https://proveitmath.org" target="_blank"
+                  >Prove it!&nbsp;Math Academy</a
+                >
+              </div>
+            </div>
+            <!-- row -->
+            <div id="copyright"> Copyright &copy; Kenneth G. Monks </div>
+          </div>
+        </footer>
+      </div>
+    </div>
+
+    <script>
+      if (!window.name) window.name = 'lurchplus'</script
+    ><script src="../assets/js/utils.js"></script>
+    <script src="../assets/js/mathjax-config.js"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"
+      id="MathJax-script"></script>
+  </body>
+</html>

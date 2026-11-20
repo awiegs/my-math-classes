@@ -8,7 +8,7 @@
  */
 
 import { LurchDocument } from './lurch-document.js'
-import { appURL, isValidURL, makeAbsoluteURL } from './utilities.js'
+import { appURL, isValidURL, makeAbsoluteURL, cleanContextAndResetCaret } from './utilities.js'
 import { Dialog } from './dialog.js'
 
 // Internal use only
@@ -54,6 +54,9 @@ export const loadFromURL = url => new Promise( ( resolve, reject ) => {
     } )
     request.addEventListener( 'error', reject )
     request.open( 'GET', url )
+    // TODO: The next line needs to be disabled to utilize
+    // lurch-discussion-files repo for links, but must stay enabled for adding
+    // contexts to files.
     request.setRequestHeader( 'Cache-Control', 'max-age=0' )
     request.send()
 } )
@@ -113,6 +116,14 @@ export const loadFromQueryString = editor => {
         loadFromURL( source )
         .then( content => {
             const LD = new LurchDocument( editor )
+
+            // Remove any context panel that may have been saved in the file
+            editor.once('SetContent', () => {
+              requestAnimationFrame(() => {
+                 cleanContextAndResetCaret(editor)
+              })
+            })
+
             LD.setDocument( content )
             LD.setFileID( source )
         } ).catch( () =>

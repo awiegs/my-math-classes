@@ -1,0 +1,140 @@
+// The js utilities for the lurch.plus site
+
+// open a standalone lurch window with minimal browser goo
+const openLurch = url => {
+  const height = 0.85 * window.screen.height
+  const width = 853
+  const top = 0.075 * window.screen.height
+  const left = (window.screen.width - width) / 2
+  var features =
+    'width=853, height=' +
+    height +
+    ', top=' +
+    top +
+    ', left=' +
+    left +
+    ', toolbar=no, menubar=no, location=no, status=no' +
+    ', noopener, noreferrer'
+  window.open(url, '_blank', features)
+}
+
+// open .lurch url's in a separate tab
+document.addEventListener('click', (event) => {
+ const link = event.target.closest('a') // Check if the clicked element is an anchor
+ if (link && !link.hasAttribute('target') && 
+     link.getAttribute('href')?.endsWith('.lurch')) {
+   event.preventDefault() // Prevent default behavior
+   window.open(link.href, '_blank') // Open link in a new tab
+ }
+})
+
+// enable clicking on the completed rows in the 100 theorem table
+document.addEventListener('DOMContentLoaded', function () {
+  const rows = document.querySelectorAll('tr[data-href]') // Select only rows with data-href
+  rows.forEach(row => {
+    row.addEventListener('click', function () {
+      const url = this.getAttribute('data-href')
+      if (url) {
+        openLurch(url)
+        // window.location.href = url // Navigate to the URL
+      }
+    })
+  })
+})
+
+// enable clicking anywhere on landing page gallery cards
+document.addEventListener('DOMContentLoaded', function () {
+  const cards = document.querySelectorAll('.gallery-card, .landing-card')
+  cards.forEach(card => {
+    const link = card.querySelector('a.lurch-link, a.card-link')
+    if (!link) return
+
+    card.addEventListener('click', event => {
+      if (event.target.closest('a')) return
+      link.click()
+    })
+  })
+})
+
+// make nav bar collapsable on narrow screens
+document.addEventListener("DOMContentLoaded", () => {
+  const body = document.body
+  const toggle = document.getElementById("nav-toggle")
+
+  const getPxVar = name =>
+    parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)) || 0
+
+  const breakpoint = () =>
+    getPxVar("--nav-width") + getPxVar("--content-max-width") + 40
+
+  const applyAutoState = () => {
+    const narrow = window.innerWidth <= breakpoint()
+
+    body.classList.toggle("nav-narrow", narrow)
+    body.classList.toggle("nav-wide", !narrow)
+
+    // reset manual overrides whenever zoom/resize changes layout
+    body.classList.remove("nav-open", "nav-closed")
+  }
+
+  const isNarrow = () => body.classList.contains("nav-narrow")
+
+  toggle?.addEventListener("click", () => {
+    if (isNarrow()) {
+      body.classList.toggle("nav-open")
+    } else {
+      body.classList.toggle("nav-closed")
+    }
+  })
+
+  window.addEventListener("resize", applyAutoState)
+
+  applyAutoState()
+
+  requestAnimationFrame(() => {
+    body.classList.add("nav-ready")
+  })
+})
+
+// make submenus collapsible
+document.querySelectorAll('.has-submenu').forEach(item => {
+  item.addEventListener('click', () => {
+    const submenu = item.nextElementSibling
+    const icon = item.querySelector('i')
+
+    // Toggle submenu visibility
+    submenu?.classList.toggle('hidden')
+
+    // Toggle icon class
+    if (icon) {
+      icon.classList.toggle('fa-caret-down')
+      icon.classList.toggle('fa-caret-right')
+    }
+  })
+})
+
+// Function to load the state of checkboxes from localStorage
+const loadCheckboxState = () => {
+  document.querySelectorAll('.contains-task-list input[type="checkbox"]')
+          .forEach( (checkbox,n) => {
+    checkbox.id = `checkbox-${n}`
+    const isChecked = localStorage.getItem(checkbox.id) === 'true'
+    checkbox.checked = isChecked
+    checkbox.parentElement.classList.toggle('checked', isChecked)
+  })
+}
+
+// Function to save the state of checkboxes to localStorage
+const saveCheckboxState =  (event) => {
+  const checkbox = event.target
+  localStorage.setItem(checkbox.id, checkbox.checked)
+  checkbox.parentElement.classList.toggle('checked', checkbox.checked)
+}
+
+// Attach change event listeners to all checkboxes
+document.querySelectorAll('.contains-task-list input[type="checkbox"]').forEach(checkbox => {
+  checkbox.addEventListener('change', saveCheckboxState)
+})
+
+// Load the checkbox state when the page loads
+loadCheckboxState()

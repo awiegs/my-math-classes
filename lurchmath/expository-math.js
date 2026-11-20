@@ -24,7 +24,7 @@
 import { Atom } from './atoms.js'
 import { represent } from './notation.js'
 import { appSettings } from './settings-install.js'
-import { Dialog, TextInputItem, LongTextInputItem } from './dialog.js'
+import { Dialog, TextInputItem, LongTextInputItem, HTMLItem } from './dialog.js'
 import { MathItem } from './math-live.js'
 import { escapeLatex } from './utilities.js'
 
@@ -55,23 +55,47 @@ export class ExpositoryMath extends Atom {
      * MathLive editor is read-only, also to imitate the advanced mode behavior
      * of the dialog for {@link Expression} atoms.
      * 
+     * @param {boolean} readOnly - if true, the dialog behaves as in
+     *   {@link module:ExpositoryMathAtoms.ExpositoryMath#viewSource
+     *   viewSource()}: the LaTeX source cannot be edited and no changes are
+     *   saved when the dialog closes
      * @returns {Promise} same convention as specified in
      *   {@link module:Atoms.Atom#edit edit() for Atoms}
      */
-    edit () {
-        const mode = appSettings.get( 'expository math editor type' )
+    edit ( readOnly = false ) {
+        // const mode = appSettings.get( 'expository math editor type' )
+        const mode = 'Advanced'
         const latex = this.getMetadata( 'latex' )
         // set up dialog contents
-        const dialog = new Dialog( 'Edit expository math', this.editor )
+        const dialog = new Dialog(
+            readOnly ? 'View expository math' : 'Edit expository math', this.editor )
         dialog.hideHeader = dialog.hideFooter = mode == 'Advanced'
         const latexInput = mode == 'Advanced' 
             // use an expandable textarea for Advanced mode
             ? new LongTextInputItem( 'latex', '', '' )
             : new TextInputItem( 'latex', 'LaTeX notation', '' )
+        dialog.addItem(new HTMLItem(
+          `<div id='latexDialogLabel'>
+            Enter LaTeX
+            <span id='info-icon'>
+              <i class='fa-solid fa-circle-info'></i>
+              <span id='tooltip-text'>(expository math not validated by Lurch)</span>
+            </span>
+          </div>`))
         dialog.addItem( latexInput )
         const textSelector = mode == 'Advanced' 
             ? 'textarea[type="text"]'
             : 'input[type="text"]'
+        // const mathjaxPreview = new HTMLItem('<div id="mathjaxPreview"></div>')
+        // dialog.addItem( mathjaxPreview )
+        // mathjaxPreview.onShow = () => {
+        //   const jaxinthebox = dialog.querySelector( '#mathjaxPreview' )
+        //   jaxinthebox.innerHTML = `$$${dialog.get( 'latex' )}$$`
+        //   // set MathJax rendering to svg in the dialog to avoid conflict with 
+        //   // standard TinyMCE .tox css on dialogs for chtml
+        //   MathJax.typeset()
+        // }
+
         const mathLivePreview = new MathItem( 'preview',
             mode == 'Advanced' ? '' : 'Math editor' )
         mathLivePreview.finishSetup = () => {
@@ -83,23 +107,55 @@ export class ExpositoryMath extends Atom {
             mathLivePreview.setValue( latex )
         }
         dialog.addItem( mathLivePreview )
+        // help footer
+        dialog.addItem(new HTMLItem(
+           readOnly ?
+           `<div id="shortcut-footer">
+              <div id="shortcut-hint">
+               <kbd>Esc</kbd> close
+              </div>
+            </div>
+           ` :
+           `<div id="shortcut-footer">
+              <div id="shortcut-hint">
+               <kbd>Esc</kbd> cancel
+               <span class="sep"></span>
+               <kbd>Enter</kbd> accept
+              </div>
+            </div>
+           `))
+
         // initialize dialog with data from the atom
         dialog.setInitialData( { latex } )
         dialog.setDefaultFocus( 'latex' )
         // utility: is the current latex empty?
         const empty = () => dialog.get( 'latex' ).trim() == ''
         // if they edit the Lurch notation or latex, keep them in sync
-        dialog.onChange = ( _, component ) => {
-            if ( component.name == 'latex' )
-                mathLivePreview.setValue( dialog.get( 'latex' ) )
-            if ( component.name == 'preview' )
-                dialog.querySelector( textSelector ).value =
-                    mathLivePreview.mathLiveEditor.value
-            dialog.dialog.setEnabled( 'OK', !empty() )
-        }
+        // (not needed in read-only mode, since the latex cannot change)
+        if ( !readOnly )
+            dialog.onChange = ( _, component ) => {
+                if ( component.name == 'latex' ) {
+                    mathLivePreview.setValue( dialog.get( 'latex' ) )
+                  // get the dom element and render it on load
+                  // const jaxinthebox = dialog.querySelector( '#mathjaxPreview' )
+                  // jaxinthebox.innerHTML = `$$${dialog.get( 'latex' )}$$`
+                  // MathJax.typeset()
+                }
+                // Copy MathLive edits back into the LaTeX input, but only when
+                // the user can edit the MathLive field.  In Advanced mode it is
+                // a read-only preview, so its only changes are our own
+                // setValue() calls above, and copying those back would replace
+                // the user's text with MathLive's normalization of it (e.g.,
+                // `\Z_` becomes `\Z_{}`) and move the cursor to the end.
+                if ( component.name == 'preview' && mode != 'Advanced' )
+                    dialog.querySelector( textSelector ).value =
+                        mathLivePreview.mathLiveEditor.value
+                dialog.dialog.setEnabled( 'OK', !empty() )
+            }
         // Show it and if they accept any changes, apply them to the atom.
+        // (In read-only mode, never save; just report that nothing changed.)
         const result = dialog.show().then( userHitOK => {
-            if ( !userHitOK || empty() ) return false
+            if ( readOnly || !userHitOK || empty() ) return false
             this.setMetadata( 'latex', dialog.get( 'latex' ) )
             this.update()
             return true
@@ -140,15 +196,42 @@ export class ExpositoryMath extends Atom {
             } )
             // add the css class
             latexInputElement.classList.add( 'advancedTextArea' )
-            // give it focus, but if it ever loses focus, close the dialog
+            if ( readOnly ) {
+                latexInputElement.readOnly = true
+                latexInputElement.classList.add( 'readonly' )
+            }
+
+            // give it focus, but if it ever loses focus, close the dialog if they won't 
+            // lose changes, otherwise show instructions how to close the dialog
             latexInputElement.focus()
-            latexInputElement.addEventListener( 'blur', () =>
-                setTimeout( () => dialog.close() ) )          
+            const helpFooter = dialog.querySelector( '#shortcut-footer' )            
+            latexInputElement.addEventListener( 'blur', () => {
+              if (latexInputElement.value.trim() === latex.trim()) 
+                setTimeout( () => dialog.close() )
+              else {
+                // display the footer
+                helpFooter?.classList.add('visible')
+                latexInputElement.focus()
+              }
+            } )
         }
         // hide latex input for beginner mode
         latexInputElement.parentNode.style.display = mode == 'Beginner' ? 'none' : ''
         return result
     }
+
+    /**
+     * The read-only counterpart to {@link module:ExpositoryMathAtoms.ExpositoryMath#edit
+     * edit()}.  Shows the same dialog used for editing, but with the LaTeX
+     * source locked against changes and with no save performed when the dialog
+     * closes.  Used when the user clicks (or presses Enter on) an expository
+     * math atom that is not currently editable, e.g. one shown inside a
+     * document's read-only "context" panel.
+     *
+     * @returns {Promise} same convention as specified in
+     *   {@link module:Atoms.Atom#edit edit() for Atoms}
+     */
+    viewSource () { return this.edit( true ) }
 
     /**
      * Render the LaTeX from the dialog as HTML and place that HTML into the
@@ -222,11 +305,12 @@ export const install = editor => {
         onAction : insertExpositoryMath
     } )
     // Install that function as what happens when you type a dollar sign,
-    // as in LaTeX.  (Yes, this means that you can't type a dollar sign in Lurch.
-    // We will later make that into a configurable option.)
+    // as in LaTeX.  (Yes, this means that you can't type a dollar sign directly in Lurch.
+    // but you can enter one as expository math by entering \$ for the LaTeX.)
     editor.on( 'init', () => {
         editor.dom.doc.body.addEventListener( 'keypress', event => {
-            if ( event.key == '$' && appSettings.get( 'dollar sign shortcut' ) ) {
+            // if ( event.key == '$' && appSettings.get( 'dollar sign shortcut' ) ) {
+            if ( event.key == '$' ) {
                 event.preventDefault()
                 event.stopPropagation()
                 insertExpositoryMath()

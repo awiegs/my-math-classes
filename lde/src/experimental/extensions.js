@@ -11,6 +11,7 @@ import { Environment } from '../environment.js'
 import { Symbol as LurchSymbol } from '../symbol.js'
 import { Declaration } from '../declaration.js'
 import { Application } from '../application.js'
+import { BindingExpression } from '../binding-expression.js'
 import { CNFProp } from './CNFProp.js'
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -200,6 +201,68 @@ LogicConcept.prototype.isAnEquation = function ( ) {
           this.numChildren()>2
 }
 
+/**
+ * Whether this is an Application headed by the `trans_chain` Symbol, wherever
+ * it sits.  Most chain machinery wants the statement-level
+ * {@link LogicConcept#isAChain isAChain()} instead, but a chain can also occur
+ * as a subexpression - a condition inside a set builder, say - and this is the
+ * head test both share.
+ *
+ * @memberof Extensions
+ * @returns {boolean}
+ */
+LogicConcept.prototype.hasChainHead = function ( ) {
+  return (this instanceof Application) &&
+          this.child(0) instanceof LurchSymbol &&
+          this.child(0).text()==='trans_chain'
+}
+
+/**
+ * A Chain is an outermost Application whose operation is the Symbol whose
+ * .text() is 'trans_chain'.  The intended use is with transitive chains of =,
+ * ≤, and <, and the trans_chain symbol will be invisible to them. We don't
+ * check the number and types of arguments since the assumption is that will
+ * only be created by parsing a user input transitive chain.
+ *
+ * @memberof Extensions
+ * @returns {boolean}
+ */
+LogicConcept.prototype.isAChain = function ( ) {
+  return this.hasChainHead() && this.isOutermost()
+}
+
+/**
+ * Whether this chain is *abbreviating* - standing for its trios - rather than
+ * being a proof step in its own right.
+ *
+ * A chain claimed as a conclusion is a proof step: the user is asserting each
+ * of its steps and expects the full treatment, with `by` reasons and comments
+ * attached to individual rows, diffs driving the substitution machinery, and
+ * per-row feedback.  `splitChains()` in global-validation.js handles those, at
+ * validation time.
+ *
+ * Every other statement-level chain is just shorthand for the conjunction of
+ * its steps, whether it is an assumption (`Assume 0 ≤ r < b`), the conclusion
+ * of a Rule, or a claim sitting inside a given environment (which is how a
+ * `Let r ∈ ℤ, 0 ≤ r < b` body copy arrives).  `processChainAbbreviations()` in
+ * interpret.js expands those into trios during interpretation.
+ *
+ * A chain inside a Declaration is excluded: the original body's putdown is the
+ * declaration's `ProperName` signature and must not change.  The copy of that
+ * body inserted by `processDeclarationBodies()` is an ordinary sibling in an
+ * Environment, so it is expanded like any other abbreviating chain.
+ *
+ * @memberof Extensions
+ * @returns {boolean}
+ */
+LogicConcept.prototype.isAnAbbreviatingChain = function ( ) {
+  return this.isAChain() &&
+         !this.isAConclusionIn() &&
+         this.parent() instanceof Environment &&
+         !this.hasAncestorSatisfying( a => a instanceof Declaration )
+}
+
+
 /** 
  * Matching syntactic sugar to isAnEquation for Declarations. 
  * 
@@ -216,7 +279,8 @@ LogicConcept.prototype.isADeclaration = function () {
  * declarations will have atomic propositional forms and a separate copy of the
  * body. It ignores anything flagged with .ignore for defining shortucts and
  * other content that is supposed to be ignored, and ignores anything passed in
- * the argument ignores.
+ * the argument ignores.  An alias declaration (`x := E`, expanded and made
+ * inert by interpretation) is never a proposition either.
  * 
  * @memberof Extensions
  * @param {LogicConcept[]} ignores
@@ -229,6 +293,7 @@ LogicConcept.prototype.isAProposition = function ( ignores = []) {
          ) || 
          ( this.isADeclaration() && 
           !this.isA('Declare')   &&
+          !this.isA('alias')     &&
           !ignores.includes(this)
          ) 
 }
@@ -282,6 +347,60 @@ LogicConcept.prototype.equations = function ( conclusionsOnly = false ) {
 }
 
 /**
+ * Compute the array of all chains in this LC.  If the first argument is
+ * true, only return those that are inferences.
+ * 
+ * @memberof Extensions
+ * @param {boolean} conclusionsOnly - if true, only return inferences
+ */
+LogicConcept.prototype.chains = function ( conclusionsOnly = false ) {
+  return [...this.descendantsSatisfyingIterator(
+    x => x.isAChain() && (!conclusionsOnly || x.isAConclusionIn()) ,
+    x => x.isA('Declare') || x.isA('Rule') || x.isA('Part') || x.isA('Inst') )]
+}
+
+/**
+ * Split a transitive chain into its constituent binary trios.
+ *
+ * A chain `(trans_chain a₁ op₁ a₂ op₂ ⋯ aₙ)` asserts each of its steps, so it
+ * is propositionally equivalent to the sequence of trios `(op₁ a₁ a₂)`,
+ * `(op₂ a₂ a₃)`, ... - a conjunction, which an Environment distributes over
+ * either polarity, so this rewrite is valid for a given chain as well as for a
+ * claimed one and assumes nothing about the operators involved.
+ *
+ * Each trio is built by slicing the chain rather than by constructing a fresh
+ * Application, so it inherits the LC attributes stored on the chain - in
+ * particular its `given` type (a given chain therefore yields given trios) and
+ * its web UI `_id` - and it records its 0-based step index in the js attribute
+ * `.chainStep`.
+ *
+ * The trios are returned rather than inserted: the caller decides where they
+ * go and what becomes of the chain itself.  See `splitChains()` (claim chains,
+ * at validation time) and `processGivenChains()` (given chains, at
+ * interpretation time) in global-validation.js and interpret.js respectively.
+ *
+ * @memberof Extensions
+ * @returns {LogicConcept[]} the trios, in chain order
+ */
+LogicConcept.prototype.chainTrios = function ( ) {
+  const n = this.numChildren()
+  const trios = []
+  // the operands sit at the odd child positions with the operators between
+  // them at the even ones, so step k is built from children k, k+1, k+2
+  for (let k=1;k<n-2;k+=2) {
+    // slice out the trio, then move a copy of its operator to the front and
+    // drop the original.  Note .slice for LCs makes an LC copy, not a
+    // 'shallow' copy, which is what preserves the chain's LC attributes.
+    const trio = this.slice(k,k+3)
+    trio.unshiftChild(this.child(k+1).copy())
+    trio.removeChild(2)
+    trio.chainStep = (k-1)/2
+    trios.push(trio)
+  }
+  return trios
+}
+
+/**
  * Compute the array of all declarations in this LC If the optional argument
  * onlywithbodies is true, only return declarations with bodies.
  * 
@@ -298,20 +417,42 @@ LogicConcept.prototype.declarations = function ( onlywithbodies ) {
 
 /** 
  * Compute the array of all Declare's in this LC. 
- * 
+ *
+ * Note that a Declare cannot be produced during instantiation because we assume
+ * that they are global, and therefore declared at the top level of the
+ * document, never inside a Rule. So we can cache these.
+ *
  * @memberof Extensions
  */
-LogicConcept.prototype.Declares = function () {
-  return [...this.descendantsSatisfyingIterator( x => x.isA('Declare') )]
+LogicConcept.prototype.getDeclares = function () {
+  return this.Declares ??= 
+    [...this.descendantsSatisfyingIterator( x => x.isA('Declare') )]
 }
 
 /** 
  * Compute the array of all Rule's in this LC. 
- * 
+ *
+ * Note that a Rule cannot be produced during instantiation.  It must be present
+ * to begin with or created when processing Theorems. So we can cache these.
+ *
  * @memberof Extensions
  */
-LogicConcept.prototype.Rules = function () {
-  return [...this.descendantsSatisfyingIterator( x => x.isA('Rule') )]
+LogicConcept.prototype.getRules = function () {
+  return this.Rules ??= 
+    [...this.descendantsSatisfyingIterator( x => x.isA('Rule') )]
+}
+
+/** 
+ * Compute the array of all Rule's in this LC. 
+ *
+ * Note that a Theorem cannot be produced during instantiation.  It must be present
+ * to begin with. So we can cache these.
+ *
+ * @memberof Extensions
+ */
+LogicConcept.prototype.getTheorems = function () {
+  return this.Theorems ??= 
+    [...this.descendantsSatisfyingIterator( x => x.isA('Theorem') )]
 }
 
 /** 
@@ -341,6 +482,21 @@ LogicConcept.prototype.Parts = function () {
  */
 LogicConcept.prototype.isALet = function ( ) {
   return (this instanceof Declaration && this.isA('given') && !this.isA('Declare'))
+}
+
+/**
+ * A ForSome is defined to be a claim declaration that is not marked as a 'Declare'
+ * whether or not it has a body
+ * 
+ * @param {boolean} withbody - if true, only return true for ForSome's with a body
+ * @memberof Extensions
+ * @returns {boolean} 
+ */
+LogicConcept.prototype.isAForSome = function ( withbody ) {
+  return  this instanceof Declaration && 
+          !this.isA('given') && 
+          !this.isA('Declare')  && 
+          (!withbody || this.body())
 }
 
 /**
@@ -522,6 +678,15 @@ LogicConcept.prototype.bindings = function () {
 }
 
 /** 
+ * Compute the array of all Metavars in this LC in Depth order
+ * 
+ * @memberof Extensions
+ */
+LogicConcept.prototype.metavars = function () {
+  return this.descendantsSatisfying( x => x.isA('Metavar') )
+}
+
+/** 
  * Compute the array of all LurchSymbols in this LC 
  * 
  * @memberof Extensions
@@ -531,53 +696,68 @@ LogicConcept.prototype.symbols = function () {
 }
 
 /**
+ * Render a symbol's text the way putdown does: unchanged if it contains no
+ * putdown delimiter or whitespace characters, and quoted with the appropriate
+ * escapes otherwise.  This matches the Symbol case of
+ * {@link LogicConcept#toPutdown toPutdown()}.
+ */
+const putdownSymbolText = text =>
+  !/\(|\)|\{|\}|\[|\]|:|\s|"|'/.test( text ) ? text :
+  ( '"' + text.replace( /\\/g, '\\\\' )
+              .replace( /"/g, '\\"' )
+              .replace( /\n/g, '\\n' ) + '"' )
+
+/**
  * Compute the Prop Form string for an expression.  This is the `.putdown` form
  * except that we must use the `ProperName` for symbols instead of their text.
  * For bound symbols, this is their canonical name so alpha equivalent
  * expressions have the same propositional form.  For symbols declared with a
  * body this is the renaming that accounts for the body. Note that the Prop form
- * does not include the leading `:` for givens. 
- *
- * We cache the results in a `.propform` js attribute and return them if
- * present.
+ * does not include the leading `:` for givens.
  *
  * In order to check for preemies we need a different propositional form in some
  * cases. The optional argument `ignore` is an array of Let's such that if a
  * symbol in the expression is defined by one of the Let's on the list, we use
- * its text name instead of its `ProperName` (i.e., no tick marks).  These are
- * not cached in the `.propform` attribute (when ignore is nonempty).
+ * its text name instead of its `ProperName` (i.e., no tick marks).
+ *
+ * For efficiency this recursion is specialized rather than delegated to
+ * {@link LogicConcept#toPutdown toPutdown()}: inside an Expression only
+ * Symbols, Applications, and BindingExpressions can occur, no attributes are
+ * rendered in a prop form, and no newlines are ever produced, so the generic
+ * putdown machinery (attribute keys, line breaking, given markers) can be
+ * skipped.  This routine is one of the hottest paths in validation.
  *
  * @memberof Extensions
  * @param {LogicConcept[]} [ignore=[]] - an array of Let's to ignore when computing this
  * propositional form.
  */
 Expression.prototype.prop = function ( ignore = [] ) {
-  // determine exactly when to use the proper name
-  return this.toPutdown((L,S,A) => {
-    let ans =
-      // if this is not a Symbol, or
-      ( !(L instanceof LurchSymbol) ||
-        // it is a Symbol, and
-        ( L instanceof LurchSymbol &&   
-            // either declared by one of the ignored lets, or
-          ( (L.declaredBy && ignore.includes(L.declaredBy)) ||
-              // undeclared (e.g. in an instantiation or binding) and 
-            ( !(L.declaredBy) && 
-              // has the same propername as something declared by one of the
-              // ignored lets
-              ignore.some( x => x.symbols().some( x => 
-                x.properName()===L.properName()) 
-              ) 
-            )
-          )
-        )
-      ) 
-      // use it's original name
-      ? S
-      // otherwise use it's properName
-      : L.properName()
-    return ans.replace( /^[:]/, '' )
-  })
+  const propOf = L => {
+    if ( L instanceof LurchSymbol ) {
+      // use the original symbol text exactly when the symbol is declared by
+      // an ignored Let, or is undeclared (e.g. in an instantiation or
+      // binding) but has the same proper name as a symbol declared by an
+      // ignored Let; otherwise use its proper name
+      const useOriginal =
+        ( L.declaredBy && ignore.includes( L.declaredBy ) ) ||
+        ( !L.declaredBy &&
+          ignore.some( x => x.symbols().some( y =>
+            y.properName() === L.properName() ) ) )
+      const ans = useOriginal ? putdownSymbolText( L.text() ) : L.properName()
+      // strip a leading ':' just as the previous toPutdown-based
+      // implementation did to every node's rendering
+      return ans[0] === ':' ? ans.slice( 1 ) : ans
+    }
+    const kids = L.children().map( propOf )
+    if ( L instanceof BindingExpression ) {
+      const last = kids.pop()
+      const first = kids.length > 1 ? '(' + kids.join( ' ' ) + ')' : kids[0]
+      return first + ' , ' + last
+    }
+    // otherwise it is an Application
+    return `(${kids.join( ' ' )})`
+  }
+  return propOf( this )
 }
 
 /**
@@ -619,15 +799,18 @@ Expression.prototype.allProps = function ( ) {
     let ans = new Set(mylets.map( (x,k) => this.prop(mylets.slice(k))))
     ans.add(this.prop())
     return ans
-  // but if it is in an instantiation and has any undeclared tick marks, check
+  // but if it is in an instantiation and has any undeclared symbols whose
+  // proper names came from Let declarations, check
   // it against every possible scope 
   //
   // TODO: is it more efficient to eliminate any scopes not involving any of the
-  // tick-marked symbols in this expression, or would that take more time than
+  // Let-renamed symbols in this expression, or would that take more time than
   // simply checking against all of the scopes?
   } else if (this.some( x => 
     x instanceof LurchSymbol && 
-    x.properName().endsWith("'") &&
+    this.root().letScopes?.some( scope => scope.some( decl =>
+      decl.symbols().some( s => s.properName()===x.properName() )
+    )) &&
     !x.constant
   ) ) {
     // get the cached value of all of the let-scopes
@@ -663,11 +846,15 @@ Environment.prototype.catalog = function ( ) {
   // scope of any declaration of that symbol. To minimize the number of prop
   // forms for such a proposition, we need to know all of the let-scopes in the
   // document.  Ignore everything containing a metavariable.
-  this.propositions()
-      .filter( P => !P.some( x => x.isA('LDE MV') ) )
-      .map( s => s.allProps() )
-      .forEach( x => catalog = catalog.union( x ) )
-  return [ ...catalog ] 
+  this.propositions().forEach( P => {
+    // Skip propositions containing a metavariable
+    if (P.some(x => x.isA('Metavar'))) return
+    // Add allProps() result to the catalog efficiently
+    for (const prop of P.allProps()) {
+      catalog.add(prop)
+    }
+  })
+  return [ ...catalog ]
 }
 
 /** 
@@ -706,7 +893,11 @@ Environment.prototype.cnf = function ( target=this , checkPreemies = false ) {
   // number the switch vars starting at one more than the catalog length
   let n = cat.length+2 
   // make the CNFProp from this LC, either with or without the preemie check
-  let ans = CNFProp.fromLC( this , cat , target , checkPreemies ).simplify()
+  let ans
+  // profile( () => ans = CNFProp.fromLC( this , cat , target , checkPreemies ), '  from LC' )
+  // profile( () => ans = ans.simplify() , '  simplify' )
+  ans = CNFProp.fromLC( this , cat , target , checkPreemies )
+  ans = ans.simplify()
   // convert the resulting CNFProp to a cnf that can be passed to CNF.isSatisfiable
   return CNFProp.toCNF(ans,{num:n})
 }
@@ -827,18 +1018,42 @@ LogicConcept.prototype.attributes = function ( ) {
     ...this.getAttributeKeys().map( key => [key,this.getAttribute(key)])  
     ]
 }
+/**
+ * Defined a getter as a shorthand synonym for `.attributes() for use in Lode
+ */
+Object.defineProperty(LogicConcept.prototype, 'atts', {
+  get() { return this.attributes() }
+})
 
- 
-//  A utilty function to inspect the contents of an LC in the console in a nice
-// format. 
-LogicConcept.prototype.inspect = function(x) { 
-  console.log(util.inspect(x , depth = 1) , 
-  { customInspect: false , showHidden: false , depth: depth , colors: true } ) 
+/**
+ * Determine if this LogicConcept is a `LurchSymbol` whose text equals the given
+ * string. If the `compareProperNames` flag is truthy, then the comparison uses
+ * the symbol's proper name instead of its `.text()` representation.
+ *
+ * @param {string} s - The string to compare against the symbol's text or proper
+ * name.
+ * @param {boolean} [compareProperNames=false] - Whether to compare using the
+ * symbol's proper name.
+ * @returns {boolean} `true` if this is a matching `LurchSymbol`, `false`
+ * otherwise.
+ *
+ */
+LogicConcept.prototype.isSymbol = function(s, compareProperNames) {
+  return this instanceof LurchSymbol && 
+         (compareProperNames ? s === this.properName : s === this.text())
 }
-LogicConcept.prototype.inspect = function(...args) { inspect(this,...args) }
 
-// Check if this LC is a Lurch symbol whose text matches the regular expression
-// formed by the string argument s
+/**
+ * Determine if this LogicConcept is a `LurchSymbol` whose text matches a given
+ * pattern. The string `s` is interpreted as a regular expression and must match
+ * the entire symbol text.
+ *
+ * @param {string} s - A string pattern (not a full RegExp object) to match the
+ * symbol's text.
+ * @returns {boolean} `true` if the symbol's text matches the pattern, `false`
+ * otherwise.
+ * @see LurchSymbol
+ */
 LogicConcept.prototype.matches = function(s) {
   return this instanceof LurchSymbol && new RegExp(`^${s}$`).test(this.text())
 }

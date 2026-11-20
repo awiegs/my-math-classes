@@ -21,6 +21,7 @@ import { Message } from './validation-messages.js'
 import { LDE } from './lde-cdn.js'
 
 const LogicConcept = LDE.LogicConcept
+const Expression = LDE.Expression
 
 // Internal use only
 // Sets up an event handler for progress notifications from the LDE, to pass
@@ -77,6 +78,43 @@ const getValidationResults = LC => {
     const results = [ ]
     // Scope errors are highest priority
     const scopeErrors = LDE.Scoping.scopeErrors( LC )
+    // alias errors (x := E whose E mentions x, and expressions left containing
+    // an unexpanded alias name - because its expansion was blocked by variable
+    // capture, a parameterized alias was used bare or with the wrong number of
+    // arguments, or its definition is not valid) also get the 'inapplicable'
+    // marker; the message is composed by validation-messages.js from the keys
+    // copied below
+    const aliasKeys = [ 'selfreferential', 'captured', 'misused', 'unaliased' ]
+        .filter( key => scopeErrors && scopeErrors[key] )
+    if ( aliasKeys.length > 0 ) {
+        const result = {
+            type : 'scoping',
+            result : 'inapplicable',
+            reason : 'This alias could not be used'
+        }
+        aliasKeys.forEach( key => result[key] = scopeErrors[key] )
+        results.push( result )
+    }
+    if ( scopeErrors && ( scopeErrors.unnecessary || scopeErrors.unsupported ) ) {
+        const result = {
+            type : 'scoping',
+            // the same marker used when the CAS is given syntax it does not
+            // support - both are unsupported input that passed the parsing gate
+            result : 'inapplicable',
+            reason : scopeErrors.unnecessary ?
+                'This declaration is unnecessary' :
+                'Lurch does not support this kind of declaration'
+        }
+        if ( scopeErrors.unnecessary )
+            result.unnecessary = scopeErrors.unnecessary
+        if ( scopeErrors.unsupported )
+            result.unsupported = scopeErrors.unsupported
+        // include a redeclaration error on the same declaration, if any, so the
+        // single feedback message shown for its atom can mention both errors
+        if ( scopeErrors.redeclared )
+            result.redeclared = scopeErrors.redeclared
+        results.push( result )
+    }
     if ( scopeErrors && scopeErrors.redeclared )
         results.push( {
             type : 'scoping',
@@ -99,7 +137,11 @@ const getValidationResults = LC => {
     // Final result is the prop validation result, if any
     const propResult = LDE.Validation.result( LC )
     if ( propResult )
-        results.push( { type : 'propositional', ...propResult } )
+        if (propResult.reason=='preemie') {
+          results.push( { type : 'propositional', result: 'indeterminate', reason: 'preemie' } )
+        } else {  
+          results.push( { type : 'propositional', ...propResult } )
+        } 
     return results
 }
 
@@ -110,7 +152,7 @@ const validateDocument = LC => {
     try {
         LDE.validate( LC )
     } catch ( error ) {
-        // console.log( error.stack )
+        console.log( error.stack )
         Message.error( `Error running LDE validation: ${error.message}` )
         return
     }
@@ -118,6 +160,18 @@ const validateDocument = LC => {
     // feedback the validation generated, and send feedback messages about each:
     const queuedFeedback = { }
     const postOrderTraversal = descendant => {
+        // Generated content - instantiations (complete or partial), the hidden
+        // Rule copy of a Theorem, and the inserted copy of a declaration body -
+        // carries the same IDs as the user content it was copied from, so any
+        // feedback about it would reach the user's atoms and clobber their own
+        // feedback (e.g. a "Trying to re-declare c" scoping error on a Let
+        // inside an instantiation used to overwrite the "This declaration is
+        // unnecessary" message on the user's own Let, erasing its hover text).
+        // So we skip such subtrees entirely.  A metavariable-free Rule is
+        // marked as its own instantiation ('LDE CI' with .rule === itself) yet
+        // is still the user's own content, so it is not skipped.
+        if ( ( descendant.isA( 'LDE CI' ) && descendant.rule !== descendant )
+            || descendant.userRule || descendant.bodyOf ) return
         // We're doing a post-order tree traversal, so do the children first:
         descendant.children().forEach( postOrderTraversal )
         // Now that we've done the recursion on children, handle this LC:

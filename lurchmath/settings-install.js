@@ -1,4 +1,3 @@
-
 /**
  * This module exports one function that installs in a TinyMCE editor features
  * for editing application settings, and it also exports the settings object
@@ -21,7 +20,7 @@ import {
  * 
  * @see {@link Settings}
  */
-export const appSettings = new Settings(
+export const oldAppSettings = new Settings(
     'Application settings',
     new SettingsMetadata(
         new SettingsCategoryMetadata(
@@ -30,30 +29,30 @@ export const appSettings = new Settings(
                 'notation',
                 'Default notation to use for new documents',
                 [ 'Lurch notation', 'LaTeX' ],
-                'LaTeX'
+                'Lurch notation'
             ),
             new CategorySettingMetadata(
                 'expression editor type',
                 'Type of expression editor to use',
                 [ 'Beginner', 'Intermediate', 'Advanced' ],
-                'Beginner'
+                'Advanced'
             ),
             new CategorySettingMetadata(
                 'expository math editor type',
                 'Type of expository math editor to use',
                 [ 'Beginner', 'Intermediate', 'Advanced' ],
-                'Beginner'
+                'Advanced'
             ),
             new BoolSettingMetadata(
                 'dollar sign shortcut',
                 'Use $ as a shortcut for entering expository math',
-                false
+                true
             ),
             new CategorySettingMetadata(
                 'default shell style',
                 'Default style for environments in new documents',
                 [ 'boxed', 'minimal' ],
-                'boxed'
+                'minimal'
             ),
             new NoteMetadata(
                 'If you change the default environment style, you will need to '
@@ -66,7 +65,7 @@ export const appSettings = new Settings(
                 'application width in window',
                 'Width of application in browser window',
                 [ 'Fixed size', 'Full width' ],
-                'Full width'
+                'Fixed size'
             ),
             new BoolSettingMetadata(
                 'developer mode on',
@@ -143,7 +142,7 @@ export const appSettings = new Settings(
                 'preferred meaning style',
                 'Preferred style to use when viewing content\'s meaning',
                 [ 'Hierarchy', 'Code' ],
-                'Hierarchy'
+                'Code'
             ),
             new LongTextSettingMetadata(
                 'declaration type templates',
@@ -186,6 +185,66 @@ export const appSettings = new Settings(
     )
 )
 
+/**
+ * This is a truncated version of {@link appSettings} use for the Preferences
+ * dialog to hide from advanced, confusing, or no longer functional settings. 
+ *
+ * @see {@link Settings}
+ */
+export const appSettings = new Settings(
+    'Application settings',
+    new SettingsMetadata(
+
+        new SettingsCategoryMetadata(
+            'Math content',
+            new CategorySettingMetadata(
+                'default shell style',
+                'Default style for environments in new documents',
+                [ 'boxed', 'minimal' ],
+                'minimal'
+            )
+        ),
+
+        new SettingsCategoryMetadata(
+            'Export to LaTeX',
+            new BoolSettingMetadata(
+                'add LaTeX document wrapper',
+                'Wrap the result in a document environment',
+                true
+            ),
+            new BoolSettingMetadata(
+                'export LaTeX selection only',
+                'Convert only the selection to LaTeX',
+                false
+            ),
+            new BoolSettingMetadata(
+              'export LaTeX shells',
+              'Export shells as LaTeX environments',
+              true
+            ),
+        ),
+        
+        new SettingsCategoryMetadata(
+            'Application warnings',
+            new ShowWarningSettingMetadata(
+                'warn before extract header',
+                'Show warning before moving the header into the document',
+                'Moving the header into the document is an action that cannot be undone.'
+            ),
+            new ShowWarningSettingMetadata(
+                'warn before embed header',
+                'Show warning before moving document content into header',
+                'Moving content into the header is an action that cannot be undone.'
+            ),
+               new BoolSettingMetadata(
+                'show validation has completed',
+                'Show a brief message that validation has completed',
+                true
+            )
+        )
+    )
+)
+
 // Internal use only
 // Called when the user says OK in the app settings dialog.
 // Parameter is a list of what settings they changed (array of string keys),
@@ -195,13 +254,15 @@ const applySettings = changes => {
     if ( changes && changes.length > 0 ) appSettings.save()
     // Now, for any change that must result in some code being run now to alter
     // the app's behavior, run that code.
-    if ( !changes || changes.includes( 'application width in window' ) ) {
-        // Mark the body as to whether we're full screen or not, so CSS responds
-        if ( appSettings.get( 'application width in window' ) == 'Fixed size' )
-            document.body.classList.remove( 'fullscreen' )
-        else
-            document.body.classList.add( 'fullscreen' )
-    }
+
+    // This shouldn't happen because it's not an actual setting anymore
+    // if ( !changes || changes.includes( 'application width in window' ) ) {
+    //     // Mark the body as to whether we're full screen or not, so CSS responds
+    //     if ( appSettings.get( 'application width in window' ) == 'Fixed size' )
+    //         document.body.classList.remove( 'fullscreen' )
+    //     else
+    //         document.body.classList.add( 'fullscreen' )
+    // }
 }
 
 /**
@@ -218,8 +279,8 @@ const applySettings = changes => {
  */
 export const install = editor => {
     editor.ui.registry.addMenuItem( 'preferences', {
-        text : 'Preferences',
-        tooltip : 'Preferences',
+        text : 'Application settings',
+        tooltip : 'Lurch application settings',
         icon : 'preferences',
         onAction : () => {
             appSettings.load()

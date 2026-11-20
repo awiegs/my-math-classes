@@ -6,25 +6,31 @@
 
   <script type="module">
     import { parse as lurch2putdown } from './lurch-to-putdown.js'
-    import { parse as lurch2tex } from './lurch-to-tex.js'
+    const lurch2tex = ( s, opts = {} ) => lurch2putdown( s, { ...opts, tex: true } )
     window.onload = function() {
       const textarea = document.getElementById('source')
       const update = () => {
         const text = textarea.value
+        
+        // resize to fit the input
+        textarea.style.height = '0' // reset to force the browser to compute the correct height
+        textarea.style.height = `${textarea.scrollHeight}px` 
+
+        // update the mathjax and putdown
         let tex,putdown
         try { 
           const isBlank = /^\s*$/.test(text)
-          // console.log(`The text input is blank: ${isBlank}`)
           tex = (!isBlank) ? `$${lurch2tex(text,{enableSets:true})}$` : ''
           putdown = (!isBlank) ? lurch2putdown(text,{enableSets:true}) : ''
-          // console.log(
-            // `changing render from ${text} to ${tex} with meaning ${putdown}` )
+          textarea.classList.remove('badparse')
           const meaningDiv = document.getElementById('meaning')
-          meaningDiv.innerHTML = putdown
+          meaningDiv.textContent = putdown
           const renderDiv = document.getElementById('rendered')
           renderDiv.innerHTML = tex
           try { MathJax.typeset([renderDiv]) } catch (e) { }
-        } catch (e) {  } 
+        } catch (e) {  
+          textarea.classList.add('badparse')
+        }
       }
       update()
       textarea.addEventListener('input', update)
@@ -73,16 +79,15 @@
     It is currently under development, and more features will be added in the future.
   </p>
 
-	<div class="leftColumn">
+	<div class="fullColumn">
 		<label for="source">Input:</label>
 		<br/>
 
 		<textarea class="ioArea" id="source" onchange="()=>{ 
-      // console.log('changed!')
-      updateRender(this.value) }">Let x be such that x leq 10</textarea>
+      updateRender(this.value) }">sum i=1 to n of i^3 = ((n*(n+1))/2)^2</textarea>
 	</div>
 
-	<div class="rightColumn">
+	<div class="fullColumn">
 		<label for="rendered">Rendering:</label>
 		<br/>
 
@@ -108,9 +113,9 @@
 
   <p>English phrases such as <code>Given</code> or <code>declare</code> are case sensitive and will produce LaTeX with the same phrase in the same case. Spaces within an expression are usually ignored and can be used for legibility.  The main exception is that there cannot be any spaces between a function and the parentheses containing its arguments in a function application expression.</p>
 
-  <p>A comma separated sequence preceeded by one of the <code>Given</code> keywords has the same effect as saying that each of them is a <code>Given</code> individually. The shortcut declaration <code>Let x in A</code> has the same meaning as <code>Let x be such that x in A</code>. The shortcut declaration <code>P(x) for some x in A</code> has the same meaning as <code>P(x) and x in A for some x</code>.</p>
+  <p>A comma separated sequence preceeded by one of the <code>Given</code> keywords has the same effect as saying that each of them is a <code>Given</code> individually. The shortcut declaration <code>Let x in A</code> has the same meaning as <code>Let x be such that x in A</code>. In a <code>Let</code> declaration a comma may replace the phrase <code>be such that</code>, so <code>Let a, b in ZZ, a|n, b|n</code> means <code>Let a, b in ZZ be such that a|n, b|n</code>. Similarly, the declaration <code>P(x), Q(x) for some x in A</code> has the same meaning as <code>P(x), Q(x) x in A for some x</code>.</p>
   
-  <p>To declared the set operator $\{\ \}$ as a global constant use <code>Declare set</code>. To declare the ordered pair, triple, or tuple operator $\langle\ \rangle$ as a constant use <code>Declare tuple</code>.</p>
+  <p>The following symbols are automatically declared to be constants globally in every document.<br/> <code>𝜆 ➤ AlgebraRule NoMatrixOps Arithmetic ChainsRule EquationsRule SetBuilderRule ℕ ℤ ℚ ℝ ℂ  defint integral product Union Intersect maps index tuple set sum sumOver class setbuilder trans_chain range interval seq> floor ceiling</code>.</p>
 
 </section>
 
@@ -152,6 +157,7 @@
     <tr><td>exponentials $\left(x^2\right)$</td></tr>
     <tr><td>function application $\left(f_0(x,y)(z)\right)$</td></tr>
     <tr><td>postfix ($n!$, $f'$)</td></tr>
+    <tr><td>abstract infix operators ($\star$, $\oplus$, $\otimes$, $\odot$)</td></tr>
     <tr><td>negation ($-x$), reciprocal ($1/2$)</td></tr>
     <tr><td>product ($2\cdot x$)</td></tr>
     <tr><td>summation $\left(\sum_{k=0}^n f(k)\right)$</td></tr>

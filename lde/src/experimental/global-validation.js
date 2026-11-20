@@ -119,19 +119,31 @@ import CNF from '../validation/conjunctive-normal-form.js'
 // import Validation from '../validation.js'
 import {
   LogicConcept, Expression, Declaration, Environment, LurchSymbol,
-  Matching, Formula, Scoping, Validation, Application
+  Matching, Formula, Scoping, Validation, Application, BindingExpression
 } from '../index.js'
-import { isArithmetic, arithmeticToCAS } from './parsing.js'
+import { isArithmetic, arithmeticToCAS, algebraToCAS,
+         isNegationOfArithmetic, isNumberType, hasMatrixOps
+       } from './parsing.js'
+// the chain-operator families 
+// head → family, family → conclusion ladder, and the
+// ChainsRule(op, ...) parameter resolution - all derived from the
+// chainFamilies table, the same single-source-of-truth precedent as
+// interpret.js's autoDeclaredConstants import
+import { chainOpFamily, chainFamilyConclusion, chainFamiliesOfHead,
+         chainParamFamily } from './parsers/notation-tables.js'
 
 const Problem = Matching.Problem
 const isAnEFA = Matching.isAnEFA
 
 // import experimental tools
 import Interpret from './interpret.js'
-const { markDeclaredSymbols, renameBindings, assignProperNames, interpret } = Interpret
+const { markDeclaredSymbols, renameBindings, replaceBindings, assignProperNames,
+        interpret, isConstantSymbol } = Interpret
 // import experimental utilities
 import Utils from './utils.js'
-const commonInitialSlice = Utils.commonInitialSlice
+const { subscript, commonInitialSlice } = Utils
+// profile it iff running in Lode
+const profile = (globalThis.global) ? Utils.profile : f=>f()
 // import the LDE options
 import { LurchOptions } from './lurch-options.js'
 
@@ -140,7 +152,8 @@ import { LurchOptions } from './lurch-options.js'
 // Convenience Utilities
 //
 const instantiation = 'LDE CI'
-const metavariable  = 'LDE MV'
+const metavariable  = 'Metavar'
+const EFA  = 'LDE EFA'
 
 // Debug is a global boolean
 const time = (description) => { if (Debug) console.time(description) }
@@ -181,7 +194,7 @@ const timeEnd = (description) => { if (Debug) console.timeEnd(description) }
  * @param {Environment} target - the inference to validate
  */
 const validate = ( doc, target = doc , scopingMethod = Scoping.declareWhenSeen ) => {
-  
+
   // if the target is the full document, check if the document contains anything
   // marked with attribute 'target:true', and if so make the first occurrence of
   // that thing the target
@@ -195,10 +208,10 @@ const validate = ( doc, target = doc , scopingMethod = Scoping.declareWhenSeen )
   } 
 
   // interpret it if it hasn't been already (the interpret routine checks)
-  interpret( doc )
+  profile(()=>interpret( doc ),'interpret')
 
   // process the domains (if they aren't already)
-  processDomains(doc)
+  profile(()=>processDomains(doc),'process domains')
 
   //\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\
   // Here is the location to install new validation tools that are compatible
@@ -206,11 +219,11 @@ const validate = ( doc, target = doc , scopingMethod = Scoping.declareWhenSeen )
   
   ///////////////////////////////////
   // BIHs
-  processBIHs(doc)
+  profile(()=>processBIHs(doc),'process BIHs')
     
   ///////////////////////////////////
   // Proof by Cases
-  processCases(doc)
+  profile(()=>processCases(doc),'process Cases')
   
   // while this idea works in general for any forbidden Weeny formula, it's not
   // efficent because there are way more ways to match something like f(x+1,y-2)
@@ -234,10 +247,22 @@ const validate = ( doc, target = doc , scopingMethod = Scoping.declareWhenSeen )
   ///////////////////////////////////////////////////////////////////////////
 
   ///////////////////////////////////
+  // Chains
+  //
+  // Rule: { ChainsRule }
+  profile(()=>processChains(doc),'process Equations')
+
+  ///////////////////////////////////
   // Equations
   //
   // Rule: { EquationsRule }
-  processEquations(doc)
+  // profile(()=>processEquations(doc),'process Equations')
+
+  ///////////////////////////////////
+  // Set Builders
+  //
+  // Rule: { SetBuilderRule }
+  profile(()=>processSetBuilders(doc),'process Set Builders')
 
   ///////////////////////////////////
   // Arithmetic
@@ -256,7 +281,7 @@ const validate = ( doc, target = doc , scopingMethod = Scoping.declareWhenSeen )
   // Arithmetic in ℚ: +,⋅,^,=,<,≤.-,/ and denominators nonzero.
   // Arithmetic in ℝ (or ℂ): for now just uses the Algebra rule. 
   //
-  processArithmetic(doc)
+  profile(()=>processArithmetic(doc),'process Arithmetic')
 
   ///////////////////////////////////
   // Algebra
@@ -267,7 +292,7 @@ const validate = ( doc, target = doc , scopingMethod = Scoping.declareWhenSeen )
   // 
   // Currently only evaluates algebraic identities. An equation of the form
   // LHS=RHS is valid by asking Algebrite if (LHS)-(RHS) evaluates to zero.
-  processAlgebra(doc)
+  profile(()=>processAlgebra(doc),'process Algebra')
 
   //\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\//\\
   
@@ -275,42 +300,64 @@ const validate = ( doc, target = doc , scopingMethod = Scoping.declareWhenSeen )
   // the list of user propositions and the document catalog.  This must be done
   // after the tools above in case they instantiate a 'Part' that then is used
   // for further instantiation (e.g. as with the Cases tool)
-  instantiate(doc)
+  profile(()=>instantiate(doc),'instantiate')
   
   ///////////////
   // Scoping
-  Scoping.validate(doc, scopingMethod )
-  
+  profile(()=>Scoping.validate(doc, scopingMethod ),'Scoping')
+
+  ///////////////////////////////////
   ///////////////
   // Caching
   //
-  // cache the let-scopes in the root (if the aren't)
-  if (!doc.letScopes) doc.letScopes = doc.scopes()
+  // cache the let-scopes in the root (if they aren't)
+  doc.letScopes = doc.letScopes || doc.scopes()
+  
+  // 
+  // For debugging purposes, before leaving, rename all of the ProperNames to
+  // something human-readable. 
+  // TODO: maybe improve or eliminate this in the future
+  // TODO: maybe improve or eliminate this in the future
+  profile(()=>tidyProperNames(doc),'tidy Proper Names')
   // cache the catalog in the root
   if (!doc.cat) doc.cat = doc.catalog()
-  
+
   // when its all complete mark the declared symbols again (this is fast, so no
   // need to do it too carefully)
-  markDeclaredSymbols(doc)
+  profile(()=>markDeclaredSymbols(doc),'Mark Declared Symbols')
 
   ///////////////
   // Prop Check
   if (LurchOptions.validateall) {
+    // profile(()=>doc._validateall( target ),'validate all')
     doc._validateall( target )
     if (LurchOptions.checkPreemies) doc._validateall( target , true ) 
   } else { 
+    // profile(()=>doc._validate( target ),'validate target')
     doc._validate( target )
     if (LurchOptions.checkPreemies) doc._validate( target , true ) 
   }
 
-  // For debugging purposes, before leaving, rename all of the ProperNames to
-  // something human-readable. 
-  // TODO: maybe improve or eliminate this in the future
-  tidyProperNames(doc)
-  // re-cache the catalog, since these are new prop names
-  doc.cat = doc.catalog()
+  ///////////////////////////////////
+  // Flagged Declarations
+  //
+  // Give feedback for declarations flagged during interpretation: leading
+  // Lets of Rules and Theorems ('unnecessary'), declarations whose body
+  // contains another declaration ('unsupported'), and aliases together with
+  // any expressions they could not be expanded in.  This must run after
+  // Scoping.validate, so the scoping pass cannot erase the scope errors we
+  // add, and after propositional validation, so a flagged claim declaration's
+  // 'inapplicable' result is not overwritten by its propositional result.
+  profile(()=>markFlaggedDeclarations(doc),'Flagged Declarations')
 
-  return doc   
+  // For debugging purposes, before leaving, rename all of the ProperNames to
+  // something human-readable.
+  // TODO: maybe improve or eliminate this in the future
+  // profile(()=>tidyProperNames(doc),'tidy Proper Names')
+  // re-cache the catalog, since these are new prop names
+  // doc.cat = doc.catalog()
+
+  return doc
 }
 
 
@@ -334,8 +381,11 @@ const validate = ( doc, target = doc , scopingMethod = Scoping.declareWhenSeen )
 const processDomains = doc => {
   // make it idempotent
   if (doc.domainsProcessed) { return }
-
-  doc.formulas().forEach(f => {
+  
+  // refresh the index
+  doc.index.update('Formulas')
+  
+  doc.index.get('Formulas').forEach(f => {
     cacheFormulaDomainInfo(f)
     // If there are no metavariables in this formula, instantiate it so it is
     // available for validation.
@@ -384,6 +434,71 @@ const cacheFormulaDomainInfo = f => {
 }
 
 /**
+ * Convert a pattern into a canonical string form by consistently renaming its
+ * metavariables. This is useful for comparing patterns up to permutation of
+ * metavariables, e.g., for detecting "doppleganger" patterns (alpha-equivalent
+ * patterns differing only by a permutation of metavariable names).
+ *
+ * The canonicalization works by traversing the pattern in depth-first order,
+ * assigning metavariables names in the order they appear. Each metavariable is
+ * renamed to a standardized name of the form `𝛼₁`, `𝛼₂`, ... using subscripts
+ * to make them human-readable. All constants and structural elements are left
+ * unchanged.
+ *
+ * @function patternForm
+ * @param {LogicConcept} pattern - A pattern expression that may contain metavariables.
+ * @returns {string} A canonical string representation of the pattern in Putdown notation
+ *                   with consistent metavariable renaming.
+ *
+ * @example
+ * // Suppose pattern is (or W V) with W and V as metavariables
+ * patternForm(pattern)
+ * // → '(or 𝛼₁ 𝛼₂)'
+ *
+ * @see LogicConcept#metavars
+ * @see LogicConcept#toPutdown
+ */
+const patternForm = pattern => {
+  let counter = 1
+  const mapping = new Map()
+
+  // Assign each metavariable a canonical name in depth-first order.
+  // Example: if pattern contains W and V, they might become 𝛼₁ and 𝛼₂.
+  pattern.metavars().forEach(metavar => {
+    let name = metavar.text()
+    if (!mapping.has(name)) mapping.set(name, `𝛼${subscript(counter++)}`)
+  })
+
+  // Produce the Putdown representation, replacing each metavariable
+  // with its canonical name while leaving constants unchanged.
+  return pattern.toPutdown((L, S, A) => {
+    return (L.isA('Metavar')) ? mapping.get(L.text()) : S
+  })
+}
+
+/**
+ * Determine whether two patterns are dopplegangers, meaning they differ only
+ * by a permutation of the same set of metavariable names but have identical
+ * structure and constants.
+ *
+ * @param {LogicConcept} p1 - The first pattern.
+ * @param {LogicConcept} p2 - The second pattern.
+ * @returns {boolean} True if p1 and p2 are dopplegangers, false otherwise.
+ */
+export const isDopplegangerOf = (p1, p2) => {
+
+  // Collect metavariable name sets for both patterns
+  const set1 = new Set(p1.metavars().map(mv => mv.text()))
+  const set2 = new Set(p2.metavars().map(mv => mv.text()))
+
+  // If sets are not equal, they can't be dopplegangers
+  if (!set1.equals(set2)) return false
+
+  // Finally, check canonical form equality
+  return patternForm(p1) === patternForm(p2)
+}
+
+/**
  * Check if an expression is forbidden as a Weeny. Currently we don't try to
  * match user expressions to a pattern that is a single metavariable or EFA that
  * is not partially instantiated because they match everything. This causes some
@@ -396,52 +511,115 @@ const cacheFormulaDomainInfo = f => {
  * bot P and x are metaviarables.  But if the premise that is the equation is
  * instantiated first to create a partial instantiation of the rule, then the x
  * will be replaced by an expression not containing any metavariables which is
- * MUCH more efficient for matching.  For example, in an expression like 
- *                  `(-(z*y)+z*x)+z*y = z*y+(-(z*y)+z*x)`
- * (an actual example) trying to match that expression to @P(x) where x and P
- * are metavars produces a whopping 191 matches.  But trying to match it to 
- * e.g. @P(z*y), only produces 16 matches... much more manageable.
+ * MUCH more efficient for matching.  For example, in an expression like
+ *
+ * `(-(z*y)+z*x)+z*y = z*y+(-(z*y)+z*x)` (an actual example) 
+ *
+ * trying to match that expression to @P(x) where x and P are metavars produces
+ * a whopping 191 matches.  But trying to match it to e.g. @P(z*y), only
+ * produces 16 matches... much more manageable.
  *
  * The LurchOptions.avoidLoneMetavars and LurchOptions.avoidLoneEFAs options can
  * be used to change the behavior of this function in the corresponding manner.
  * They are both true by default.
+ *
+ * We also don't match x∈A when x and A are metavariables or x is a metavariable
+ * and A is an EFA that is not partially instantiated because almost every
+ * statment in a typical Set Theory proof will match patterns of these forms
  */
-const forbiddenWeeny = L => 
-  // if we are told to not forbid anything either as an attribute or option
-  // then return false
-  !(L.root().getAttribute('instantiateEverything') ||
-    LurchOptions.instantiateEverything
-   ) &&
-  // otherwise check each case 
-  (
-    // it's an Environment
-    ( L instanceof Environment ) || 
-    // or we are avoiding lone metavars and it is one
-    ( LurchOptions.avoidLoneMetavars && 
-      (L instanceof LurchSymbol)
-    ) || 
-    // or we are avoiding LoneEFAs except for the subsitutition rule when the
-    // conclusion is partially instantiated, and in that case only the conclusion
-    // is checked against a user proposition that is flagged 'by substitution' for
-    // efficiency, since that will determine P for the premise.
-    ( LurchOptions.avoidLoneEFAs && 
-      isAnEFA(L) && 
-      ( !L.isA('Subs') || 
-        !L.children().slice(1).some(kid =>
-          kid.hasDescendantSatisfying( x => 
-            (x instanceof LurchSymbol) && !x.isA(metavariable)
-          )
-        ) 
+
+const forbiddenWeeny = L => {
+  if (L.root().getAttribute('instantiateEverything') ||
+      LurchOptions.instantiateEverything) return false
+
+  const isLoneMetavar = x =>
+    x instanceof LurchSymbol && x.isA(metavariable)
+
+  // Preserve the existing test for an EFA with no fixed content.
+  // Skip its leading EFA marker, checking the function slot and arguments.
+  const isBadEFA = x =>
+    isAnEFA(x) &&
+    !x.children().slice(1).some(kid =>
+      kid.hasDescendantSatisfying(y =>
+        y instanceof LurchSymbol && !y.isA(metavariable)
       )
-    ) ||
-    // don't match x∈A when A is a metavariable because almost every
-    // statment in a typical Set Theory proof has this form and will match
-    ( LurchOptions.avoidLoneElementOfs && 
-      L instanceof Application && L.child(0) instanceof LurchSymbol &&
-      L.child(0).text()==='∈'  && L.child(2) instanceof LurchSymbol && 
-      L.child(2).isA(metavariable)
     )
+
+  return (
+    // Matching cannot handle environments as propositions.
+    (L instanceof Environment) ||
+
+    // Declaration bodies must be expressions to participate in matching.
+    (L instanceof Declaration &&
+      L.body() &&
+      !(L.body() instanceof Expression)) ||
+
+    // Leading Lets in Rules and Theorems are ignored by validation.
+    (L instanceof Declaration && L.isA('unnecessary')) ||
+
+    (LurchOptions.avoidLoneMetavars && L instanceof LurchSymbol) ||
+
+    // A lone EFA is allowed only for a partially instantiated Subs
+    // conclusion.  The matching loop separately requires "by substitution".
+    (LurchOptions.avoidLoneEFAs &&
+      isAnEFA(L) &&
+      (!L.isA('Subs') || isBadEFA(L))) ||
+
+    // Avoid x∈A when x is a metavariable and A is either a metavariable
+    // or an EFA with no fixed content.
+    (LurchOptions.avoidLoneElementOfs &&
+      L instanceof Application &&
+      L.numChildren() === 3 &&
+      L.child(0) instanceof LurchSymbol && L.child(0).text() === '∈' &&
+      isLoneMetavar(L.child(1)) &&
+      (isLoneMetavar(L.child(2)) || isBadEFA(L.child(2))))
   )
+}
+
+// const forbiddenWeeny = L => 
+//   // if we are told to not forbid anything either as an attribute or option
+//   // then return false
+//   !(L.root().getAttribute('instantiateEverything') ||
+//     LurchOptions.instantiateEverything
+//    ) &&
+//   // otherwise check each case 
+//   (
+//     // it's an Environment
+//     ( L instanceof Environment ) ||
+//     // or it's a declaration whose body is not a single expression, e.g. an
+//     // environment or (unsupported) another declaration, since the Matching
+//     // package can only match expression bodies
+//     ( L instanceof Declaration && L.body() && !(L.body() instanceof Expression) ) ||
+//     // or it's an unnecessary declaration (a leading Let of a Rule or Theorem),
+//     // which is ignored by validation as if it were deleted
+//     ( L instanceof Declaration && L.isA('unnecessary') ) ||
+//     // or we are avoiding lone metavars and it is one
+//     ( LurchOptions.avoidLoneMetavars && 
+//       (L instanceof LurchSymbol)
+//     ) || 
+//     // or we are avoiding LoneEFAs except for the subsitutition rule when the
+//     // conclusion is partially instantiated, and in that case only the conclusion
+//     // is checked against a user proposition that is flagged 'by substitution' for
+//     // efficiency, since that will determine P for the premise.
+//     ( LurchOptions.avoidLoneEFAs && 
+//       isAnEFA(L) && 
+//       ( !L.isA('Subs') || 
+//         !L.children().slice(1).some(kid =>
+//           kid.hasDescendantSatisfying( x => 
+//             (x instanceof LurchSymbol) && !x.isA(metavariable)
+//           )
+//         ) 
+//       )
+//     ) ||
+//     // don't match x∈A when x and A are metavariables because almost every
+//     // statment in a typical Set Theory proof has this form and will match
+//     ( LurchOptions.avoidLoneElementOfs && 
+//       L instanceof Application && 
+//       L.child(0) instanceof LurchSymbol && L.child(0).text()==='∈' && 
+//       L.child(1) instanceof LurchSymbol && L.child(2).isA(metavariable) &&
+//       L.child(2) instanceof LurchSymbol && L.child(2).isA(metavariable)
+//     )
+//   )
 /** 
  * Process BIHs
  * 
@@ -467,7 +645,7 @@ const processBIHs = doc => {
     formulas.forEach(f => {
       const toggle = matchGivens(f, b);
       try {
-        ;[...Formula.allPossibleInstantiations(f, b)].forEach(s => {
+        ;[...Formula.allPossibleInstantiations(f, b)].map(sanitizeSolution).forEach(s => {
           found = true
           const inst = Formula.instantiate(f, s)
           assignProperNames(inst)
@@ -519,6 +697,136 @@ const matchGivens = (a, b) => {
 }
 
 /**
+ * Check if the doc contains the Rule `:{ ChainsRule }` (or `:{ EquationsRule }
+ * for backwards compatibility).  If not, just split the chains.  
+ *
+ * Otherwise after splitting get the diffs of all equations (whether or not from
+ * chains), and add the instantiation `:{ :x=y f(x)=f(y) }` after the above
+ * `Rule`. For an arbitrary equation `A=B` the values of `x,y` are computed with
+ * `diff(A,B)`. Note that this assumes `=` is reflexive, because the normal way
+ * to say this would be to say that `A=A` by reflexive and then `:{ :x=y :A=A
+ * A=B }` by substitution. 
+ *
+ * For each equation e.g. `a=b≤c=d<e` that is split, also include the
+ * instantiation `:{ :a=b :b≤c :c=d :d<e a=d }` after the above rule.  This
+ * assumes transitivity of the chain operators in the obvious manner.
+ *
+ * Finally, to assume symmetry we allow both `x=y` and `y=x` versions of all
+ * equations. So including the Chains Rule is assuming reflexive, symmetric,
+ * transitive, and substitution properties for equality.
+ *
+ */
+
+// TODO: 
+// * generalize this to other reflexive operators with a special kind of
+//   Declare, e.g. Reflexive = ≤ ⊆ ⇔
+// * make it more efficient.  For example, don't process reflexive equations,
+//   carefully check exactly when you need to insert symmetry or a Consider
+//   rather than brute force blanketing everything.  Do we need all of the
+//   symmetric equivalences?  Is there a cleaner more efficient way to
+//   accomplish the same thing?
+const processChains = doc => {
+  // check options 
+  if (!LurchOptions.processChains) return
+
+  // split chains. This also marks all conclusion equations, including
+  // those split from chains, with .equation=true
+  splitChains(doc)
+
+  // // check if the ChainsRule is around, if not, we're done
+  // const rule=doc.find(
+  //   x=>(x.isA('Rule') || x.isA('Inst')) && 
+  //       x.numChildren()==1 && 
+  //       x.child(0) instanceof LurchSymbol && 
+  //      (x.child(0).text()==='EquationsRule' || x.child(0).text()==='ChainsRule'),
+  //   x=>!(x.isA('Rule') || x.isA('Inst') || x===doc)
+  // )
+  const rule = doc.index.get('Chains rule')[0]
+  // if there is no Chains Rule loaded we are done
+  if (!rule) return
+
+  // Add the transitivity conclusion for every chain.  This assumes transitivity, of course.
+  instantiateTransitives(doc,rule)
+
+  // First, we add symmetric equivalences.  For these we don't restrict to just
+  // conclusion equations.  This way it knows every equation is symmetric.
+  doc.equations().forEach( eq => insertSymmetricEquivalences( eq , rule ))
+
+  // the Chains Rule has been found, so get all of the .equations that are
+  // conclusions or produced from a conclusion chain by splitChains
+  const eqs=[...doc.descendantsSatisfyingIterator(
+    x => x.equation , 
+    x => x instanceof Application && !x.isOutermost())]
+  
+  // for each equation, A=B,
+  eqs.forEach( eq => {
+
+    // get the LHS and RHS
+    const A = eq.child(1).copy(), B=eq.child(2).copy()
+    // get the diff.  The optional third argument tells it to check for the
+    // smallest single substutition that will work.  Thus, for now, the user
+    // must only do one substitution at a time.
+    //
+    // TODO: consider generalizing or upgrading
+    const delta = diff(A,B,true)
+    // for now we only allow a single substutition at a time, so check if
+    // there's a diff, and that it is not vacuous (e.g., the equation isn't x=x).
+    // The argument 'true' to diff above guarantees there will only be one diff,
+    // if any. 
+    //
+    // TODO: maybe generalize later
+    if (delta && delta[0].length>0) {
+      // the substititution might also be for a common ancestor of the diff
+      // locations, so we consider them all
+      const n = delta[0].length
+      for (let i=1;i<=n;i++) {
+        // get x,y such that replacing x with y in A produces B
+        let x = A.child(...(delta[0].slice(0,i))).copy(), 
+            y = B.child(...(delta[0].slice(0,i))).copy()
+        // construct the instantiation :{ :x=y A=B }
+        
+        // build it
+        let inst = new Environment( 
+          new Application( new LurchSymbol('=') , x , y).asA('given') , 
+          new Application( new LurchSymbol('=') , A.copy() , B.copy() ) 
+        )
+        // and insert it
+        insertInstantiation( inst , rule , eq )
+        
+        // additionally add x=y to the list of things that should be considered
+        // as user propositions for further instantiation when prop validating.
+        const x_eq_y = inst.child(0).copy()
+        
+        // and insert it
+        insertInstantiation( x_eq_y , rule , eq )
+        
+        // Also make the reverse diff equation as a Consider to impose symmetry
+        // const y_eq_x = new Application(new LurchSymbol('='),y.copy(),x.copy())
+        const y_eq_x = reverseEquation(x_eq_y)
+        
+        // and insert it
+        insertInstantiation( y_eq_x , rule , eq )
+
+        // and insert the symmetric equivalences for them (only need to do it for
+        // one of them)
+        insertSymmetricEquivalences( x_eq_y , rule )
+      }
+    // and in the case where there's no substitution possible, also add the
+    // reverse of the equation to impose symmetry (its symmetric equivalences are inserted above)
+    } else {
+      // Make the reverse equation as a Consider
+      // const y_eq_x = new Application(new LurchSymbol('=') , B.copy() , A.copy())
+      const y_eq_x = reverseEquation(eq)
+      
+      // and insert it
+      insertInstantiation( y_eq_x , rule , eq )
+    } 
+
+  })
+}
+
+
+/**
  * Check if the doc contains the Rule `:{ EquationsRule }`.  If not, just split
  * the equation chains.  
  * 
@@ -533,15 +841,15 @@ const matchGivens = (a, b) => {
  * equality.
  * 
  * Finally, to assume symmetry we allow both `x=y` and `y=x` versions of the above
- * rules. So including the Transitive Chain Rule is assuming reflexive,
+ * rules. So including the Equations Rule is assuming reflexive,
  * symmetric, transitive, and substitution properties for equality.
  * 
  */
 // TODO: 
-// * generalize this to other reflexive operators with a special kind of
-//   Declare, e.g. Reflexive = ≤ ⊆ ⇔
 // * generalize this to transitive chains of operators, e.g. a = b < c = d ≤ e
 //   implies that a<e
+// * generalize this to other reflexive operators with a special kind of
+//   Declare, e.g. Reflexive = ≤ ⊆ ⇔
 // * make it more efficient.  For example, don't process reflexive equations,
 //   carefully check exactly when you need to insert symmetry or a Consider
 //   rather than brute force blanketing everything.  Do we need all of the
@@ -644,57 +952,204 @@ const processEquations = doc => {
 
 /**
  * Transitivity Instantiations
- * 
- * Go through and fetch all of the user's equations (i.e., only equations that
- * are conclusions) which have more than two arguments and create and insert
- * them after the EquationsRule rule.  For example, `a=b=c=d=e` would produce
- * and insert the instantiation `:{ :a=b :b=c :c=d :d=e a=e }`
- * 
- * This is a helper utility called by `processEquations()`.
+ *
+ * Go through and fetch all of the user's chains which have more than two
+ * arguments and create and insert them after the ChainsRule rule.  For
+ * example, `a=b<c=d≤e` would produce and insert the instantiation
+ * `:{ :a=b :b<c :c=d :d=e a<e }`
+ *
+ * Both the user's claimed chains (which are conclusions) and the user's given
+ * chains get a transitive conclusion, so `Assume 0 ≤ r < b` makes `0<b`
+ * available just as claiming the chain would.  A given chain's steps are
+ * already available without this - processGivenChains() splits every given
+ * chain during interpretation, needing no rule - so what the ChainsRule adds
+ * for a given chain is exactly the transitivity.
+ *
+ * Since the cong-chains upgrade (2026-07) a chain may also mix `=` with
+ * congruence steps, whose operator is the compound Application `(≅ m)`
+ * rather than a Symbol, so operators are compared with `.equals()`, not
+ * `.text()`.  Since the chain-operator table (Slice 2 of the
+ * chains-first-class plan, 2026-07-28) the operator families and their
+ * transitive-conclusion policies come from the chainFamilies table in
+ * parsers/notation-tables.js: `=` is neutral, a chain's symbol operators
+ * all belong to one family (ineq, bare ≅, |, or ⊆), and the conclusion
+ * operator is the strongest family op present among the steps (`<` beats
+ * `≤` beats `=`; a single-op family's op beats `=`), while a
+ * parameterized-congruence chain concludes with its compound operator
+ * itself.  The parser guarantees one family per chain AND structurally
+ * equal parameters on every congruence step (the equal-moduli
+ * commitment), so every parsed chain has a transitive conclusion; the
+ * family and all-equal checks below are defensive, for trans_chain LCs
+ * built directly in putdown (Lode documents, embedded raw putdown)
+ * rather than by the parser - such a chain still splits into steps, but
+ * emits no transitivity instantiation.
+ *
+ * The rule may be the parameterized `(ChainsRule op ...)` form (the
+ * AlgebraRule(NoMatrixOps) precedent): each listed op names the families
+ * to enable via chainFamiliesOfHead (`ChainsRule(lt)` enables ineq,
+ * `ChainsRule(cong)` both congruence families, ...), and a chain of a
+ * family the rule does not enable gets no transitivity instantiation.
+ * Pure-= chains are always enabled - they are the ChainsRule machinery
+ * itself.  A bare `ChainsRule` (or `EquationsRule`) enables everything.
+ *
+ * This is a helper utility called by `processChains()`.
  */
 const instantiateTransitives = (doc,rule) => {
-  // fetch the conclusion equations (argument = true)
-  doc.equations(true).forEach( eq => {
-    
-    // let n be the number of arguments to =
+  // the enabled families: null means all (the bare rule)
+  const ruleHead = rule.child(0)
+  const enabled = (ruleHead instanceof Application)
+    ? new Set(ruleHead.children().slice(1)
+        .filter( a => a instanceof LurchSymbol )
+        .flatMap( a => chainFamiliesOfHead(a.text()) ))
+    : null
+
+  // Every chain that was expanded into trios gets a transitive conclusion:
+  // the user's conclusion chains, which splitChains above has just expanded,
+  // and the abbreviating chains that processChainAbbreviations expanded during
+  // interpretation (assumptions, Rule conclusions, and claims inside given
+  // environments).  Those two cases are complementary by definition, so this
+  // is every chain still standing in the user's content.  Chains inside a Rule
+  // are excluded automatically: chains() never looks inside one, and
+  // processChainAbbreviations removes a Rule's chains outright.  Chains inside
+  // a Declaration body are excluded by isAnAbbreviatingChain(), which is why
+  // a chain declaration body yields one instantiation - from the inserted
+  // copy - rather than two.
+  //
+  // Emitting this for an abbreviating chain is sound for the same reason it is
+  // for a claimed one.  The transitivity is asserted only as the implication
+  // `:{ :step₁ ⋯ :stepₖ conclusion }`, which the user's own steps discharge
+  // wherever those steps are accessible; it is what makes `0<b` follow from
+  // `Assume 0 ≤ r < b`.  Note that chains(true) is this same traversal with
+  // the conclusion test added, so filtering one walk avoids walking twice.
+  doc.chains().filter( c => c.isAConclusionIn() || c.isAnAbbreviatingChain()
+  ).forEach( eq => {
+
+    // let n be the number of arguments to `trans_chain`
     let n = eq.numChildren()
 
-    // if there are more than two args, create the relevant instantiation
-    if (n>3) { 
+    // the step operators sit at child positions 2, 4, ..., n-2
+    const stepOps = []
+    for (let k=2;k<n-1;k+=2) stepOps.push(eq.child(k))
 
-      // build it
-      const inst = new Environment()
-      for (let k=1;k<n-1;k++) {
-        let newpair = eq.slice(k,k+2)
-        newpair.unshiftChild( eq.child(0).copy() )
-        inst.pushChild(newpair.asA('given'))
-      }
-      inst.pushChild(
-        new Application(
-          eq.child(0).copy(), 
-          eq.child(1).copy(),
-          eq.lastChild().copy()
-        )
+    // determine the chain's family (see above): compound operators are
+    // the parameterized-congruence family, symbol operators map through
+    // the table's head → family, and '=' is neutral
+    const congs = stepOps.filter( x => !(x instanceof LurchSymbol) )
+    const heads = [...new Set(stepOps.filter( x => x instanceof LurchSymbol )
+                                     .map( x => x.text() ))]
+                  .filter( h => h!=='=' )
+    const families = new Set(heads.map( h => chainOpFamily[h] ))
+    if (congs.length>0) families.add(chainParamFamily)
+    // defensive (raw-putdown chains only): unknown ops or mixed families
+    if (families.size>1 || families.has(undefined)) return
+    const family = (families.size===1) ? [...families][0] : null
+
+    // skip families the (parameterized) rule does not enable
+    if (family !== null && enabled !== null && !enabled.has(family)) return
+
+    // find the correct operation for the transitive conclusion
+    let op
+    if (congs.length>0) {
+      // parameterized congruence: all step operators must agree
+      if (!congs.every( c => c.equals(congs[0]) )) return
+      op = congs[0].copy()
+    } else {
+      op = new LurchSymbol(
+        chainFamilyConclusion[family]?.find( h => heads.includes(h) ) ?? '=' )
+    }
+
+    // create the relevant instantiation.  Even with only 4 args we want to
+    // remove the `trans_chain` head
+
+    // build it
+    const inst = new Environment()
+    for (let k=1;k<n-2;k+=2) {
+      let newtrio = eq.slice(k,k+3)
+      newtrio.unshiftChild( eq.child(k+1).copy() )
+      newtrio.removeChild(2)
+      inst.pushChild(newtrio.asA('given'))
+    }
+
+    // construct and add the conclusion
+    inst.pushChild(
+      new Application(
+        op,
+        eq.child(1).copy(),
+        eq.lastChild().copy()
       )
-      
-      // and insert it
-      insertInstantiation( inst, rule, eq )
+    )
 
-      // We also want the conclusion of that instantiation to be a Consider so
-      // it can instantiate other rules as if the user had stated it explicitly
-      // (since they stated it implicitly by constructing this transitive chain
-      // in the first place).  Note that insertInstantiation() automatically
-      // marks it as a Consider because it's an equation, not an environment.
-      const conc = inst.lastChild().copy()
-      insertInstantiation( conc , rule , eq )
-      // and insert its symmetric equivalence
-      insertSymmetricEquivalences( conc , rule )
-      // and Consider its reverse
+    // and insert it
+    insertInstantiation( inst, rule, eq )
+    // We also want the conclusion of that instantiation to be a Consider so
+    // it can instantiate other rules as if the user had stated it explicitly
+    // (since they stated it implicitly by constructing this transitive chain
+    // in the first place).  Note that insertInstantiation() automatically
+    // marks it as a Consider because it's an expression, not an environment.
+    const conc = inst.lastChild().copy()
+    insertInstantiation( conc , rule , eq )
+    // finally, if it is an equation
+    if (op instanceof LurchSymbol && op.text()==='=') {
+      // Consider its reverse
       insertInstantiation( reverseEquation(conc) , rule)
-
     }
   })
 }
+
+
+// /**
+//  * Transitivity Instantiations
+//  * 
+//  * Go through and fetch all of the user's equations (i.e., only equations that
+//  * are conclusions) which have more than two arguments and create and insert
+//  * them after the EquationsRule rule.  For example, `a=b=c=d=e` would produce
+//  * and insert the instantiation `:{ :a=b :b=c :c=d :d=e a=e }`
+//  * 
+//  * This is a helper utility called by `processEquations()`.
+//  */
+// const instantiateTransitives = (doc,rule) => {
+//   // fetch the conclusion equations (argument = true)
+//   doc.equations(true).forEach( eq => {
+    
+//     // let n be the number of arguments to =
+//     let n = eq.numChildren()
+
+//     // if there are more than two args, create the relevant instantiation
+//     if (n>3) { 
+
+//       // build it
+//       const inst = new Environment()
+//       for (let k=1;k<n-1;k++) {
+//         let newpair = eq.slice(k,k+2)
+//         newpair.unshiftChild( eq.child(0).copy() )
+//         inst.pushChild(newpair.asA('given'))
+//       }
+//       inst.pushChild(
+//         new Application(
+//           eq.child(0).copy(), 
+//           eq.child(1).copy(),
+//           eq.lastChild().copy()
+//         )
+//       )
+      
+//       // and insert it
+//       insertInstantiation( inst, rule, eq )
+
+//       // We also want the conclusion of that instantiation to be a Consider so
+//       // it can instantiate other rules as if the user had stated it explicitly
+//       // (since they stated it implicitly by constructing this transitive chain
+//       // in the first place).  Note that insertInstantiation() automatically
+//       // marks it as a Consider because it's an equation, not an environment.
+//       const conc = inst.lastChild().copy()
+//       insertInstantiation( conc , rule , eq )
+//       // and insert its symmetric equivalence
+//       insertSymmetricEquivalences( conc , rule )
+//       // and Consider its reverse
+//       insertInstantiation( reverseEquation(conc) , rule)
+
+//     }
+//   })
+// }
 
 
 /**
@@ -743,6 +1198,195 @@ const copyEquation = eq => {
   )
 }
 
+/**
+ * Set Builder Memberships
+ *
+ * Check if the doc contains the Rule `:{ SetBuilderRule }`.  If not, do
+ * nothing.  Otherwise every membership in a set builder that occurs anywhere
+ * inside one of the user's propositions (or Considers) - as the whole
+ * proposition or as a subexpression under ¬, inside a conditional, or under a
+ * binder - gets the two directions of
+ *
+ *    z ∈ { x∈S : P₁(x), …, Pₙ(x) }   ≡   z ∈ S, P₁(z), …, Pₙ(z)
+ *
+ * inserted as ready-made instantiations of the SetBuilderRule, for arbitrary
+ * n, with no matching and no EFAs.  The parser folds an `in S` domain into a
+ * leading ∈-condition and wraps two or more conditions in the invisible seq>
+ * head, so a builder's body here is either a seq> sequence of conditions or a
+ * single classic condition - the built-in therefore subsumes the manual rule
+ * `z in { x : @P(x) } ≡ @P(z)`.  Domainless builders are included: this is
+ * full comprehension, granting the same power the manual rule already grants,
+ * so a library that opts in takes on the usual responsibility for what its
+ * builders may say.
+ *
+ * Every instantiation is a substitution instance of the comprehension schema
+ * for the exact builder subterm the user wrote: the conditions cᵢ(z) are the
+ * builder's conditions with its bound variable replaced by z
+ * capture-avoidingly (the body's bound variables are first renamed to the
+ * canonical y-names users cannot type, the same device formula instantiation
+ * uses).  The instantiations contain no declarations, so scoping and the
+ * preemie machinery are untouched.  Both directions are inserted regardless
+ * of the occurrence's polarity - the SAT solver uses what it needs - and
+ * occurrences sharing a propositional form (in particular alpha-variant
+ * builders, whose canonical binding ProperNames agree) share one set of
+ * instantiations.
+ */
+const processSetBuilders = doc => {
+  // check options
+  if (!LurchOptions.processSetBuilders) return
+
+  // check if the SetBuilderRule is around, if not, we're done
+  const rule = doc.index.get('SetBuilder rule')[0]
+  if (!rule) return
+
+  // the parser emits (setbuilder ((x , body))) - the binding sits inside a
+  // one-child Application - so unwrap that layer, tolerating a bare binding
+  // for documents built directly in putdown
+  const builderBinding = b => {
+    const arg = b.child(1)
+    return (arg instanceof BindingExpression) ? arg :
+           (arg instanceof Application && arg.numChildren()===1 &&
+            arg.child(0) instanceof BindingExpression) ? arg.child(0) : undefined
+  }
+
+  // a membership in a set builder: (∈ t (setbuilder ((x , body))))
+  const isSetBuilderMembership = m =>
+    m instanceof Application && m.numChildren()===3 &&
+    m.child(0).matches('∈') &&
+    m.child(2) instanceof Application &&
+    m.child(2).numChildren()===2 &&
+    m.child(2,0).matches('setbuilder') &&
+    builderBinding(m.child(2))?.boundSymbolNames().length===1
+
+  // collect the occurrences inside the user's propositions and Considers -
+  // the same collection the instantiation loop matches against, so nothing
+  // inside generated Rules, Parts, or Insts
+  const memberships = [...doc.descendantsSatisfyingIterator(
+    x => x.isAProposition() || x.isA('Consider'),
+    x => x.isA('Rule') || x.isA('Part') || x.isA('Inst')
+  )].flatMap( prop => prop.descendantsSatisfying( isSetBuilderMembership ) )
+
+  // process each occurrence once per propositional form
+  const done = new Set()
+  memberships.forEach( mem => {
+    const key = mem.prop()
+    if (done.has(key)) return
+    done.add(key)
+
+    const t = mem.child(1)
+    const builder = mem.child(2)
+
+    // rename the bound variables in a copy of the builder's binding to the
+    // canonical y-names, so substituting t for the builder's variable cannot
+    // capture a free variable of t, and a condition that rebinds the same
+    // name keeps its inner occurrences (they now have a different name)
+    const binding = builderBinding(builder).copy()
+    replaceBindings(binding)
+    const boundName = binding.boundSymbolNames()[0]
+
+    // the body is one Expression: either the invisible seq> head wrapping
+    // two or more conditions, or a single classic condition
+    const body = binding.lastChild()
+    const conditions =
+      (body instanceof Application && body.child(0).matches('seq>'))
+        ? body.children().slice(1)
+        : [ body ]
+
+    // a condition with t substituted for the builder's bound variable.
+    // After the renaming above every occurrence of that name is free in the
+    // condition and nothing free in t can be captured, so plain replacement
+    // is capture-avoiding substitution
+    const substitute = c => {
+      if (c.matches(boundName)) return t.copy()
+      const ans = c.copy()
+      ans.descendantsSatisfying( d => d.matches(boundName) )
+         .forEach( d => d.replaceWith(t.copy()) )
+      return ans
+    }
+    const conditions_t = conditions.map(substitute)
+
+    // a fresh copy of the membership itself, for premises and conclusions
+    const membership = () =>
+      new Application( new LurchSymbol('∈'), t.copy(), builder.copy() )
+
+    // elimination: one single-conclusion Inst per condition, the same shape
+    // the ≡ shorthand expansion of the manual fixed-n rule produces
+    conditions_t.forEach( c => {
+      insertInstantiation(
+        new Environment( membership().asA('given'), c.copy() ), rule, mem )
+    })
+
+    // introduction: one Inst concluding the membership from all conditions
+    insertInstantiation(
+      new Environment( ...conditions_t.map( c => c.copy().asA('given') ),
+                       membership() ), rule, mem )
+  })
+}
+
+/**
+ * Upgrade any equation chains that appear in an LC to the new transitive chain format.
+ */
+const upgradeChains = doc => {
+  // loop through all of the equations and replace each one with the upgraded
+  // form.
+  doc.equations().filter(x=>x.numChildren()>3).forEach( eq => {
+    eq2chain(eq).insertAfter(eq)
+    eq.remove()
+  })
+  return doc
+}
+
+/**
+ * Convert an n-ary = equation LC to transitive chain form.  This assumes eq has
+ * the form (= a₁ ... aₙ) with n>2. If it's an ordinary equation it's returns undefined. 
+ */
+const eq2chain = eq => {
+  const ans = eq.slice(1)
+  ans.children().forEach( kid => {
+    new LurchSymbol('=').insertAfter(kid)
+  })
+  ans.unshiftChild(new LurchSymbol('trans_chain'))
+  ans.popChild()
+  return ans
+}
+
+/**
+ * Go through and fetch all of the user's chains (i.e., only chains that are
+ * conclusions).  Split them into binary pairs and insert them in the document.
+ *
+ * The trios need no notation of their own: the by-algebra tool converts a
+ * trio's two sides to CAS syntax structurally (algebraToCAS, 2026-07-28),
+ * so the old practice of slicing the chain's typed lurchNotation string
+ * across the trios is gone.  Each trio records its 0-based step index in
+ * the js attribute `.chainStep`, so the validation worker can report
+ * per-row results for the future in-atom row markers (the trios already
+ * share the chain's `_id` via the attribute-preserving slice).
+ */
+const splitChains = doc => {
+  // any user equations that aren't chains should be marked as such
+  doc.equations(true).forEach(x=>x.equation=true)
+  // fetch the conclusion equations (argument = true)
+  doc.chains(true).forEach( eq => {
+    let last = eq
+    // chainTrios() does the slicing (see extensions.js); the trios inherit the
+    // chain's LC attributes, so a claimed chain yields claimed trios
+    eq.chainTrios().forEach( (newtrio,i) => {
+      if (newtrio.isAnEquation()) newtrio.equation = true
+      // apply the 'by algebra' attribute if necessary.  Trio i is built from
+      // the chain's children 2i+1, 2i+2, 2i+3, so the user attached any `by`
+      // to child 2i+3, the trio's RHS.
+      const rhs = eq.child(2*i+3)
+      if (rhs.by) {
+        newtrio.by = rhs.by
+        delete rhs.by
+      }
+      // insert it
+      newtrio.insertAfter(last)
+      last=newtrio
+    })
+    eq.ignore = true
+  })
+}
 
 /**
  * Go through and fetch all of the user's equations (i.e., only equations that
@@ -904,7 +1548,7 @@ const processCases = doc => {
     // for each one construct the relevant partial instantiation
     usercases.forEach( c => {
       try {
-        ;[...Formula.allPossibleInstantiations(p, c)].forEach(s => {
+        ;[...Formula.allPossibleInstantiations(p, c)].map(sanitizeSolution).forEach(s => {
           
           // for each solution (there should only be one) instantiate the rule
           const inst = Formula.instantiate(rule, s)
@@ -925,9 +1569,12 @@ const processCases = doc => {
       .forEach( e =>{  
       rules.forEach( r => {
         try {
-          ;[...Formula.allPossibleInstantiations(r.lastChild(), e)].forEach(s => {
+          ;[...Formula.allPossibleInstantiations(r.lastChild(), e)].map(sanitizeSolution).forEach(s => {
             const inst = Formula.instantiate(r, s)
-            // do the usual prepping
+            // do the usual prepping: rename the bindings to match what the
+            // user would have for the same expressions in his document, and
+            // do so before assigning ProperNames (see insertInstantiation)
+            inst.statements().forEach(x => renameBindings(x))
             assignProperNames(inst)
             cacheFormulaDomainInfo(inst)
             // the inst is no longer a Rule
@@ -946,14 +1593,10 @@ const processCases = doc => {
             inst.part = r
             if (!r.creators) r.creators = []
             inst.creators = [ ...r.creators, e ]
-            // also rename the bindings to match what the user would have
-            // for the same expressions in his document
-            // time('Rename bindings')
-            inst.statements().forEach(x => renameBindings(x))
             // then insert this instantiation after its formula
             Formula.addCachedInstantiation(r, inst)
             // finally mark the declared symbols in the instantiation
-            markDeclaredSymbols(doc, inst)
+            // markDeclaredSymbols(doc, inst)
           })
         } catch { }
       })
@@ -966,12 +1609,12 @@ const processCases = doc => {
  * Find all of the Rules that have a conclusion that is a single metavariable and only appears in the Rule as a single metavariable outermost expression (i.e., not contained in any other expression).  This is called a _caselike_ rule. 
  */
 const getCaselikeRules = doc => {
-  return doc.Rules().filter( rule => {
+  return doc.getRules().filter( rule => {
     const U = rule.lastChild() 
     if (!U.isA(metavariable)) return false
     const others = rule.descendantsSatisfying( x => x.equals(U) )
     // we return only rules that have more than one U to avoid
-    // matching rules like :{ :EquationsRule } propositionally.
+    // matching rules like :{ EquationsRule } propositionally.
     // Note that a rule like :{ →← U } will match however.
     return others.length>1 && others.every( u => u.isOutermost() ) 
   })
@@ -998,21 +1641,19 @@ const processCAS = doc => {
   })
 }
 
-// This is a prototype of the Arithmetic Tool for naturals, integers, and rationals
+// This is the Arithmetic Tool for naturals, integers, and rationals. It handles
+// equations, inequalities, and type checking of constants and constant
+// expressions.
 const processArithmetic = doc => {
   // check options
   if (!LurchOptions.processArithmetic) return
   
-  // check if the ArithmeticRule(x) is around and use the first one found
-  // even if there are multiple such rules
-  // TODO: eventually upgrade to allow more than one per document
-  const rule=doc.find(
-    x=>(x.isA('Rule') || x.isA('Inst')) && x.numChildren()==1 && 
-       x.child(0) instanceof Application &&
-       x.child(0).numChildren()==2 &&
-       x.child(0,0).matches('Arithmetic') &&
-       x.child(0,1).matches('ℕ|ℤ|ℚ'),
-    x=>!(x.isA('Rule') || x.isA('Inst') || x===doc))
+  // check if the ArithmeticRule(x) is around and use the last one found even if
+  // there are multiple such rules.  The reason to choose the last one is that
+  // the typical use case is that you have a context, with say, Arithmetic(NN)
+  // in it and want to add Arithmetic(QQ) to it without having to delete the
+  // weaker previous one.
+  const rule = doc.index.get('Arithmetic rules').last()
   // if there is no Arithmetic Rule loaded we are done
   if (!rule) return
 
@@ -1022,25 +1663,46 @@ const processArithmetic = doc => {
 
   // we found one so get the ring
   const ring = rule.child(0,1).text()
-  
   // check each expression that is by arithmetic
-  userArithmetics.forEach( c => { 
-    // if it's not allowed arithmetic it's not 'invalid', it's 'not applicable'
-    // (but you can't have a space in a class name)
-    if (!isArithmetic[ring](c)) {
+  userArithmetics.forEach( c => {
+
+    // first case: is it a type-check. If valid say so, otherwise let it fail as
+    // inapplicable in the next case.  Note that we don't care what the ring is
+    // for type checking, since you're explicitly making a claim about a type
+    // which may or may not be defined in your context.  For equations and
+    // inequalities we do care about the ring because we may be working
+    // implicitly in, say, the natural numbers and don't want an identity like
+    // `-1<0 by arithmetic` to validate because that would let us prove that
+    // there exists a number whose successor is 0, for example.
+    if ( isNumberType(c) ) { 
+      c.setResult('arithmetic', 'valid' , 'CAS')
+      insertInstantiation( new Environment(c.copy()) , rule, c)
+
+    // second case: it's an equation or inequality or its negation.
+    } else {
+
+    // if it's not allowed arithmetic or the negation of one it's not 'invalid',
+    // it's 'not applicable' (but you can't have a space in a class name)
+    if (!isArithmetic[ring](c) && !isNegationOfArithmetic(c,ring)) {
       c.setResult('arithmetic', 'inapplicable', 'CAS')
       return
     }
+    const negate = isNegationOfArithmetic(c,ring)
+    const e = (negate ? c.child(1) : c)
     // if the CAS evaluates to '1', mark the proposition as valid
-    const ans = (compute(arithmeticToCAS(c))==='1') ? 'valid' : 'invalid'
+    const ans = ( (compute(arithmeticToCAS(e))==='1' && !negate) ||
+                  (compute(arithmeticToCAS(e))==='0' && negate) )
+                ? 'valid' : 'invalid'
+
     c.setResult('arithmetic', ans , 'CAS')
     if (ans === 'valid')
       insertInstantiation( new Environment(c.copy()) , rule, c)
+    }
 
   })
 }
 
-// This is a prototype of the Algebra Tool based on the CAS tool
+// This is the Algebra Tool based on the CAS tool
 const processAlgebra = doc => {
   // check options
   if (!LurchOptions.processAlgebra) return
@@ -1048,10 +1710,18 @@ const processAlgebra = doc => {
   // check if the AlgebraRule is around, if not, we're done
   const rule=doc.find(
     x=>(x.isA('Rule') || x.isA('Inst')) && x.numChildren()==1 && 
-       x.child(0).matches('AlgebraRule'),
+       (x.child(0).matches('AlgebraRule') || 
+         (x.child(0) instanceof Application &&
+          x.child(0).numChildren()==2 &&
+          x.child(0,0).matches('AlgebraRule') &&
+          x.child(0,1).matches('NoMatrixOps')
+         )
+       ),
     x=>!(x.isA('Rule') || x.isA('Inst') || x===doc))
   // if there is no Algebra Rule loaded we are done
   if (!rule) return
+  // see if we are forbidding matrix ops
+  const noMatrixOps = rule.child(0,1)?.matches('NoMatrixOps')
   // console.log(`found`)
   // console.log(rule)
   // get all the things the user wants to checked as a conclusion by CAS
@@ -1059,18 +1729,102 @@ const processAlgebra = doc => {
     typeof x.by === 'string' && x.by ==='algebra' )]
 
   userAlgebras.forEach( c => { 
-    // get the lurch notation for the expression
-    const lurchmath = c.getAttribute('lurchNotation')
-    // a regex for an equation
-    const eqn = /^([^=]+)=([^=]+)$/
-    // if it's not a simple equation we're done
-    if (!eqn.test(lurchmath)) return
-    // otherwise get the LHS and RHS
-    const [LHS,RHS]=lurchmath.match(eqn).slice(-2)
-    const command = `simplify((${LHS})-(${RHS}))`
-    // if the CAS evaluates to 0, mark the proposition as valid
-    const ans = (compute(command)==='0') ? 'valid' : 'invalid'
+
+    // since Arithmetic(ℚ) is more robust and handles inequalities, allow that
+    if (isArithmetic.ℚ(c) || isNegationOfArithmetic(c)) {
+      const negate = isNegationOfArithmetic(c,'ℚ')
+      const e = (negate ? c.child(1) : c)
+      // if the CAS evaluates to '1', mark the proposition as valid
+      const ans = ( (compute(arithmeticToCAS(e))==='1' && !negate) ||
+                    (compute(arithmeticToCAS(e))==='0' && negate) )
+                  ? 'valid' : 'invalid'
+      c.setResult('arithmetic', ans , 'CAS')
+      if (ans === 'valid')
+        insertInstantiation( new Environment(c.copy()) , rule, c)
+      return    
+    }
+
+    // otherwise it must be a simple equation A=B, whose two sides are
+    // converted to Algebrite syntax STRUCTURALLY from the LC itself
+    // (algebraToCAS in parsing.js).  The typed lurchNotation
+    // string is no longer consulted: the old practice of regex-slicing
+    // the notation and passing the typed substrings to Algebrite
+    // verbatim required students to type Algebrite-compatible notation
+    // (and misparsed any operand containing '='); now any Lurch notation
+    // whose MEANING lies in the CAS fragment works, including in Lode
+    // documents and test files that carry no notation attribute at all.
+    if (!(c instanceof Application && c.numChildren() === 3 &&
+          c.child(0).matches('='))) {
+      c.setResult('algebra', 'inapplicable' , 'CAS')
+      return
+    }
+
+    // if we are forbidding matrix ops and it isn't a matrix identity, we're done
+    if ( noMatrixOps && hasMatrixOps(c) ) {
+      c.setResult('algebra' , 'inapplicable' , 'CAS')
+      return
+    }
+
+    // convert the two sides; an expression outside the CAS fragment
+    // (relations, quantifiers, set aggregates, user glyph operators) is
+    // inapplicable, exactly like Algebrite syntax errors below
+    const LHS = algebraToCAS(c.child(1))
+    const RHS = algebraToCAS(c.child(2))
+    if ( LHS === undefined || RHS === undefined ) {
+      c.setResult('algebra', 'inapplicable' , 'CAS')
+      return
+    }
+
+    // We need two tests.  The second command is stronger at evaluating
+    // identities than the first but only the first can evaluate matrix
+    // identities. The first test works for non-matrix identities too, but we
+    // still need both tests because something like `1/m = (m-1)/(m*(m-1))` will
+    // validate by the second test but not the first. 
+    //
+    // Both commands should return 1 iff valid.
+    // If either test passes we give it a green check. 
+    // If both tests give errors it is inapplicable.
+    // Otherwise it's invalid (which is indeterminate).
+    const command1 = `(${LHS})==(${RHS})`
+    const command2 = `simplify((${LHS})-(${RHS}))==0`
+    
+    // get the result from a command
+    const getResult = command => {
+      let result
+      try { result = compute(command) } catch { result='error' }
+      // both commands should return the string '1' if valid
+      if (result==='1') return 'valid'
+      // Algebrite flags syntax errors with an message containing 'Stop:'
+      if (result=='error' || result?.includes('Stop:')) return 'inapplicable'
+      // if it can't determine if its valid, we will say it's indeterminate, not
+      // invalid because it might just be that it can't figure out why they are
+      // equal.  This is different than the by Arithmetic rules, where when it
+      // is not valid it is almost certainly invalid.
+      return 'indeterminate'
+    }
+
+    let ans
+
+    // run the first test
+    const result1 = getResult(command1)
+    // for efficiency, if it's valid, we're done
+    if (result1==='valid') {  
+      ans = 'valid' 
+    // otherwise try harder with the second test
+    } else {
+      const result2 = getResult(command2)
+
+      // determine the answer from both results
+      ans = (result2==='valid') ? 'valid' : 
+            (result1==='inapplicable' && result2==='inapplicable') ? 'inapplicable' : 
+            'indeterminate'
+    }
+
     c.setResult('algebra', ans , 'CAS')
+    
+    // this changes the scope of where the identity holds to where the rule is
+    // for consistency with the rest of Lurch, but it's not totally necessary in
+    // this case.
     if (ans === 'valid')
       insertInstantiation( new Environment(c.copy()) , rule, c)
   })
@@ -1096,8 +1850,11 @@ const processAlgebra = doc => {
 const instantiate = doc => {
   // make it idempotent
   if (doc.instantiated) { return }
-  let formulas = doc.formulas()
+  let formulas = doc.index.get('Formulas')
+  // let formulas = doc.formulas()
   if (formulas.length === 0) { return }
+  // mark formulas that need to have all weenies checked
+  formulas.forEach( f => f.useAllWeenies = ( f.some(x => x.isAForSome()) ) )
   // there are some formulas, so get the user's Propositions to match
   const E = getUserPropositions(doc)
   // the pass number that will be stored in each Part and Inst for later
@@ -1124,7 +1881,15 @@ const instantiate = doc => {
     formulas.forEach(f => {
       // we can only instantiate formulas that have a non-forbidden weeny.
       // get this formula's maximally weeny patterns (must be cached)   
-      f.weenies.forEach(p => {
+      // f.weenies.forEach(p => {
+      
+      // The doppelganger grouping might be more efficient if done up front
+      // instead of filtering as below.  Below was just a quick implementation
+      // for testing.
+
+      f.weenies.filter( x => f.useAllWeenies || isDopplegangerOf(x,f.weenies[0]) 
+      ).forEach(p => {
+        
         // try to match this pattern p to every user proposition e
         E.forEach(e => {
           // if it's a Subs EFA and e isn't .by substitution skip it
@@ -1170,6 +1935,7 @@ const instantiate = doc => {
       // mark it as finished.
       f.finished = true
     })
+
     // increment the pass number
     n++
     // finally, get any unfinished formulas for the next pass
@@ -1211,6 +1977,45 @@ const getUserPropositions = doc => {
 }
 
 /**
+ * Rename the binders inside the body of every expression-function value of
+ * a matching Solution to `z₁, z₂, ...`, in place, and return the Solution.
+ *
+ * Only the body is renamed, never the λ's own parameters.  Those are fresh
+ * symbols from the matcher's symbol stream, so they can neither capture nor
+ * be captured, and they disappear when the EFA is β-reduced.  Renaming the
+ * whole λ through `canonicalizeBindings` would give all its parameters one
+ * name (it assigns one name per BindingExpression), so a two-argument
+ * `@P(a,b)` would lose the distinction between its argument slots; the
+ * acid test `EFA Multiple Arguments` certifies this.
+ *
+ * An EF value's body is copied from the user's proposition, so its binders
+ * carry the user's symbol text.  `Formula.instantiate` substitutes by name
+ * (β-reducing with `applyEF`, or later completing a Part whose body was
+ * already β-reduced), neither of which avoids capture, so a free user
+ * symbol substituted under such a binder could be captured.  After this
+ * renaming the binders above any substitution site are rule binders
+ * (`y`-names, from `processRules`) or EF-body binders (`z`-names), while
+ * substituted values have free symbols that are user symbols or `y`-names
+ * that are passed as EFA arguments under their own binder.  The subscript
+ * digits are reserved for internal use, so the pools cannot collide.  The
+ * prefix must not be `y`: numbering restarts at 1 in each body, so a body's
+ * `y₁` would capture the rule's own `y₁` passed as in `(λ P y₁)`.
+ *
+ * A Solution is freshly decoded from de Bruijn form and shares no subtrees
+ * with the document, so renaming it in place is safe.
+ *
+ * @param {Solution} s - a solution to a matching problem
+ * @returns {Solution} the same solution, with its EF binders renamed
+ */
+const sanitizeSolution = s => {
+  [...s.domain()].forEach(name => {
+    const value = s.get(name)
+    if (Matching.isAnEF(value)) replaceBindings(value.lastChild().body(), 'z')
+  })
+  return s
+}
+
+/**
  * Matching Propositions. 
  * 
  * Since we consider Lets and ForSomes to be proposition, we want to be able to
@@ -1243,9 +2048,11 @@ const getUserPropositions = doc => {
  // TODO: Add to Problem class and Matching as needed. We assume the bodies of
  //       ForSomes are expressions for now.
 const matchPropositions = (p, e) => {
-  // if they are both Expressions proceed as usual.
+  // fast dumb matching check
+  if (cantMatch(p,e)) { return [ ] }
+  // now use the real deal
   if (p instanceof Expression && e instanceof Expression) {
-    return Array.from(new Problem(p, e).solutions())
+    return Array.from(new Problem(p, e).solutions()).map(sanitizeSolution)
     // if they are declarations that declare the same number of symbols ...
   } else if (p instanceof Declaration && e instanceof Declaration &&
     p.symbols().length === e.symbols().length) {
@@ -1253,16 +2060,124 @@ const matchPropositions = (p, e) => {
     const esymbols = e.symbols()
     let merged = p.symbols().map((x, k) => [x, esymbols[k]]).flat()
     if (!p.body() && !e.body()) {
-      return Array.from(new Problem(...merged).solutions())
+      return Array.from(new Problem(...merged).solutions()).map(sanitizeSolution)
       // ... but if both have bodies, include them in the problem  
     } else if (p.body() && e.body()) {
-      return Array.from(new Problem(...merged, p.body(), e.body()).solutions())
+      return Array.from(new Problem(...merged, p.body(), e.body()).solutions()).map(sanitizeSolution)
     }
   }
   // if we made it to here it's not going to match      
   return []
 }
 
+/*
+ * Dumb Matching 
+ *
+ * Quickly eliminate pairs that can't match by signature or type.
+ * Returns true if the pair is a dumb Match, otherwise they can't possibly match
+ * 
+ */
+const cantMatch = (p,e) => {
+  // local utility
+  const isEFA = x => { 
+    return ((x instanceof Application) && 
+            x.child(0) instanceof LurchSymbol &&
+            x.child(0).text() === EFA)
+  }
+  
+  // Case 0: If p is an EFA or metavariable, it can match
+  if (isEFA(p) || p.isA(metavariable)) return false
+
+  // Case 1: p is a constant, so e has to match it
+  if (p.constant &&
+      !(e instanceof LurchSymbol && e.text()===p.text())) return true
+  
+  // Case 2: p is not a Symbol or EFA, so it has at least one child, and has a
+  // different number of children than e    
+  if (p.numChildren()!==e.numChildren()) return true
+
+  // Case 3: p is compound and e has the wrong type 
+  if (((p instanceof Application) && !(e instanceof Application)) ||
+      ((p instanceof Declaration) && !(e instanceof Declaration)) ||
+      ((p instanceof BindingExpression) && !(e instanceof BindingExpression)) 
+     ) return true
+
+  // Case 4: p is compound and e has the same class and the same number of
+  // children, but some corresponding pair of kids can't match
+  if ( p.children().some( (kid,k) => cantMatch(kid,e.child(k)) )
+     ) return true
+
+  // if it hasn't been eliminated by one of these cases, go ahead and match it
+  return false
+
+  // // p is a non-constant symbol (a metavar) or an EFA, e matches it
+  // if (p.isA(metavariable)) {
+  //   // console.log(`p is a metavariable, so ok`)
+  //   return true
+  // }
+  // if (isEFA(p)) {
+  //   // console.log(`p is an EFA, so ok`)
+  //   return true
+  // }
+
+  // // if p is a constant Symbol then e has to equal it
+  // if (p instanceof LurchSymbol && p.constant && 
+  //   e instanceof LurchSymbol && p.text()===e.text()) {
+  //     // console.log(`p is a constant and e is equal to it, so ok`)
+  //     return true
+  // }
+    
+  // // if p is a Symbol but not constant then e has to be a Symbol 
+  // // TODO:
+  // // it usually has to match, but I'm not sure what has to be done for bound
+  // // variables which are constantly being renamed
+  // if (p instanceof LurchSymbol && !(p.constant) && e instanceof LurchSymbol) {
+  //     // console.log(`p is a Symbol that is not a constant and e is a Symbol, so ok`)
+  //   return true
+  // }
+
+  // // if p is an Application, Declaration, or Binding then e has to be the same thing
+  // if ((p instanceof Application && e instanceof Application) || 
+  //     (p instanceof Declaration && e instanceof Declaration) ||
+  //    ( p instanceof BindingExpression && e instanceof BindingExpression))  {
+  //   // console.log(`p and e are both the same non-Symbol type...`)
+  //   // in every case it has to have the same number of children, and they all have
+  //   // to dumbMatch their corresponding partner
+  //   if (p.numChildren()===e.numChildren()) {
+  //     // console.log(`..they have the same number of children...`)
+  //     if (p.children().every( (kid,k)=>dumbMatch(p.child(k),e.child(k)))) {
+  //       // console.log(`..and the corresponding kids dumbMatch, so ok.`)
+  //       return true
+  //     } 
+  //   }
+  // }  
+  
+  // // otherwise let it run the Matching Package in case we missed something
+  // return false
+
+  // return p.isA(metavariable) || isEFA(p) ||
+
+  // // if p is a constant Symbol then e has to equal it
+  // (p instanceof LurchSymbol && p.constant && 
+  //  e instanceof LurchSymbol && p.equals(e)) ||
+
+  // // if p is a Symbol but not constant then e has to be a Symbol 
+  // // TODO:
+  // // it usually has to match, but I'm not sure what has to be done for bound
+  // // variables which are constantly being renamed
+  // (p instanceof LurchSymbol && !(p.constant) && e instanceof LurchSymbol) ||
+
+  // // if p is an Application, Declaration, or Binding then e has to be the same thing
+  // (((p instanceof Application && e instanceof Application) || 
+  //   (p instanceof Declaration && e instanceof Declaration) ||
+  //   (p instanceof BindingExpression && e instanceof BindingExpression)
+  //  ) &&
+  //  // in every case it has to have the same number of children, and they all have
+  //  // to dumbMatch their corresponding partner
+  //  p.numChildren()===e.numChildren() &&
+  //  p.children().every( (kid,k)=>dumbMatch(p.child(k),e.child(k))))
+
+}
 
 /**
  * Many of the tools that work with $n$-compact validation (including the
@@ -1300,11 +2215,16 @@ const insertInstantiation = ( inst, formula, creator ) => {
       inst = new Environment(inst)
       // and it can be ignored as well
       inst.ignore=true
-      // inst.makeIntoA('Inst')  // do we need this?
     }
 
+    // Before doing any further work on it, reject this instantiation if it
+    // contains a declaration that declares a constant or that declares the
+    // same symbol twice.  Deciding this needs the document's Declares, and the
+    // instantiation is not in the document yet, so pass the document in.
+    if (isBadInstantiation(inst, formula.root())) return
+
     // it might contain a Let which was instantiated by some other
-    // statment, so we might have to add the tickmarks.
+    // statement, so we might have to add the tickmarks.
     //
     // Note: we had to check that in a rule like :{:{:Let(x) (@ P
     //       x)} (@ P y)} that it doesn't instantiate (@ P y) first
@@ -1315,22 +2235,19 @@ const insertInstantiation = ( inst, formula, creator ) => {
     //       :Let(z) Q(z) } instead of just ∀y,Q(y). 
     //
     // TODO: does this have to be done before inserting it?
+    // Ans: I tried that and it works, but it's slightly slower for some reason.
+    //
+    // The bindings must be renamed first.  A declaration's ProperName suffix
+    // renders its body's bound variables via their canonical ProperNames, and
+    // an EF value's body arrives carrying the ProperNames of the user
+    // proposition it was copied from, where the binder may sit at a different
+    // depth (so x₂ instead of x₁).  Naming before renaming would give the
+    // instantiated Let a different atom from the user's identical Let.
+    inst.statements().forEach(x => renameBindings(x))
     assignProperNames(inst)
 
     // insert it after the formula, the order doesn't matter
     inst.insertAfter(formula)
-
-    // and mark the declared constants in the instantiation
-    markDeclaredSymbols(inst.root(), inst)
-
-    // check if this instantiation should be rejected because it contains a
-    // declaration that is declaring a constant or a declaration declaring more than
-    // one symbol that are instantiated with the same thing.
-    if (isBadInstantiation(inst)) { 
-      // if so, remove it
-      inst.remove()
-      return 
-    }
 
     // save the rule (whether formula is a Part or Rule)
     inst.rule = formula.rule || formula
@@ -1351,10 +2268,7 @@ const insertInstantiation = ( inst, formula, creator ) => {
     inst.makeIntoA(instantiation)
     // all instantiations are givens, even Considers
     inst.makeIntoA('given')
-    // also rename the bindings to match what the user would have
-    // for the same expressions in his document
-    inst.statements().forEach(x => renameBindings(x))
-    
+
     // if it's an expression, it's a Consider
     // if (inst instanceof Expression) {
     //   inst.makeIntoA('Consider')
@@ -1375,9 +2289,105 @@ const insertInstantiation = ( inst, formula, creator ) => {
         inst.makeIntoA('Part')
         // since it still has metavariables, ignore it for prop form
         inst.ignore = true
+        // a Part re-enters matching on later passes as its own formula, but
+        // Formula.instantiate() copied it without the .constant js attribute
+        // (see the note on js vs. LC attributes above), so cantMatch()'s
+        // constant shortcut cannot fire on any of its symbols until we mark
+        // them again here.  Cheap: doc.constants is already cached, and this
+        // walks only the Part, not the whole document.
+        markDeclaredSymbols(inst)
       }
     }
 
+}
+
+/**
+ * Mark Flagged Declarations
+ *
+ * Interpretation flags two kinds of declarations that the validation engine
+ * does not support, rather than crashing on them:
+ *
+ *  * `'unnecessary'` - a Rule or Theorem may not begin with a Let declaration,
+ *    because its free variables are already implicitly universal.  Validation
+ *    ignores such a Let as if it were deleted (it contributes nothing to the
+ *    propositional form, is never a Weeny, does not rename its scope, and is
+ *    disregarded when checking instantiations for bad declarations).
+ *  * `'unsupported'` - a declaration body may not contain another declaration
+ *    (the scope of the inner declaration is not legible to a user).  Such a
+ *    declaration keeps its atomic propositional form but no copy of its body
+ *    is inserted, so its content is inert.
+ *
+ * This routine adds the user-facing feedback for each flagged declaration: a
+ * scoping error (for the web UI's feedback message) and an 'inapplicable'
+ * validation result - the same marker used when the CAS is given syntax it
+ * does not support, since both are unsupported input that passed the parsing
+ * gate.  Declarations inside generated instantiations are skipped, since
+ * feedback belongs on the user's content, not on copies.
+ *
+ * It also gives the feedback for aliases (`x := E`, see processAliases in
+ * interpret.js), which interpretation expanded and made inert.  The alias's
+ * own marker is local - it depends only on the definition and its position,
+ * never on the uses that follow it: one whose body mentions its own name gets
+ * a scoping error keyed by the recorded `alias error` ('selfreferential') and
+ * an 'inapplicable' result; otherwise one that redeclares its name gets an
+ * 'invalid' result alongside the scoping pass's redeclaration error, exactly
+ * like a Let or ForSome redeclaring a name (its expansion went ahead, since
+ * the name was already in use before it); and otherwise it gets an ordinary
+ * 'valid' result.  Each expression left containing an unexpanded alias name
+ * (its js attribute `.unaliased` maps the name to the reason) gets scoping
+ * errors keyed 'unaliased' (all such names) and, for those blocked by
+ * variable capture or by misuse of a parameterized alias, 'captured' or
+ * 'misused' as well, and an 'inapplicable' result replacing whatever
+ * propositional result it got as an expression about an arbitrary symbol.
+ *
+ * This must be called after `Scoping.validate()` so that the scoping pass
+ * cannot erase the scope errors added here.
+ */
+const markFlaggedDeclarations = doc => {
+  doc.descendantsSatisfying( x => x.isA('unnecessary') || x.isA('unsupported') ||
+                                  x.isA('alias') || x.unaliased )
+     .forEach( d => {
+    // skip copies inside generated instantiations, but not inside a
+    // metavariable-free Rule, which processRules marks as its own
+    // instantiation (.rule === itself) yet is still the user's own content
+    if ( d.hasAncestorSatisfying( a => a.isA(instantiation) && a.rule !== a ) )
+      return
+    // an expression still containing an alias name that was not expanded:
+    // list the names, and separately those blocked by capture or misuse (a
+    // self-referential alias is reported on its own declaration instead)
+    if ( d.unaliased ) {
+      const errors = { unaliased: Object.keys(d.unaliased) }
+      Object.entries(d.unaliased)
+        .filter( ( [ , why ] ) => why !== 'selfreferential' )
+        .forEach( ( [ x, why ] ) => ( errors[why] ??= [ ] ).push(x) )
+      Scoping.addScopeError( d, errors )
+      Validation.setResult( d,
+        { result: 'inapplicable', reason: 'alias not expanded' } )
+      return
+    }
+    // an alias declaration
+    if ( d.isA('alias') ) {
+      const names = d.symbols().map( s => s.text() )
+      const error = d.getAttribute('alias error')
+      if ( error ) {
+        Scoping.addScopeError( d, { [error]: names } )
+        Validation.setResult( d,
+          { result: 'inapplicable', reason: `${error} alias` } )
+      } else if ( Scoping.scopeErrors(d)?.redeclared ) {
+        Validation.setResult( d,
+          { result: 'invalid', reason: 'redeclared alias' } )
+      } else {
+        Validation.setResult( d, { result: 'valid', reason: 'alias' } )
+      }
+      return
+    }
+    // add a scoping error listing the declared symbols, keyed by the flag
+    const reason = d.isA('unnecessary') ? 'unnecessary' : 'unsupported'
+    Scoping.addScopeError( d, { [reason]: d.symbols().map( s => s.text() ) } )
+    // and an 'inapplicable' validation result so it gets a ⊘ marker
+    Validation.setResult( d,
+      { result: 'inapplicable', reason: `${reason} declaration` } )
+  })
 }
 
 /**
@@ -1387,16 +2397,25 @@ const insertInstantiation = ( inst, formula, creator ) => {
  *  * If it declares more than one symbol that are instantiated with the same
  *    thing, it's bad.
  *
+ * Constants are recognized by text (numerals and the document's Declared
+ * symbols), not by the `.constant` js attribute, because `Formula.instantiate`
+ * does not copy js attributes, so a fresh instantiation has none set.
+ *
+ * @param {LogicConcept} inst - the proposed instantiation
+ * @param {LogicConcept} [doc=inst.root()] - the document whose Declares apply
+ *        (required if `inst` has not been inserted into the document yet)
  */
-const isBadInstantiation = ( inst ) => {
-  // get the declarations in this instantiation
-  const decs=inst.declarations()
+const isBadInstantiation = ( inst, doc = inst.root() ) => {
+  // get the declarations in this instantiation, skipping unnecessary ones
+  // (leading Lets of Rules or Theorems), which validation ignores as if they
+  // were deleted, so what they appear to declare is irrelevant
+  const decs=inst.declarations().filter( d => !d.isA('unnecessary') )
   // check each one to see if it declares a constant
   for (let k = 0; k < decs.length; k++) {
     // get the array of symbols in this declaration
     const symbols = decs[k].symbols()
     // check each one to see if it declares a constant
-    if (symbols.findIndex(s=>{return s.constant})!==-1) {
+    if (symbols.some( s => isConstantSymbol(s, doc) )) {
       // return true if it does
       return true
     }
@@ -1488,15 +2507,21 @@ LogicConcept.prototype._validate = function (target = this,
     // negate this
     doc.negate()
     try {
-      answer = !CNF.isSatisfiable(this.cnf(target, checkPreemies))
+      let cnf 
+      // profile(() => cnf = this.cnf(target, checkPreemies),' convert to CNF')
+      // profile(() => answer = !CNF.isSatisfiable(cnf),' call satSolve')
+      cnf = this.cnf(target, checkPreemies)
+      answer = !CNF.isSatisfiable(cnf)
     } catch (e) {
-      doc.negate()
       console.log(`\nError validating the following for ${(checkPreemies) ? 'preemies' : 'prop'}:\n`)
       console.log(target)
       console.log(`at address: ${target.address()}`)
+      console.error(e)
+      throw e
+    } finally {
+      // Restore the original polarity even if CNF conversion or SAT throws.
+      doc.negate()
     }
-    // un-negate this
-    doc.negate()
     return answer
   }
 
@@ -1511,6 +2536,7 @@ LogicConcept.prototype._validate = function (target = this,
       ans = Validation.result(target).result === 'valid'
     } else {
       // say(`Not already validated by n-compact.. checking`)
+      // ans = profile(()=>satCheck(this, target),'SAT check')
       ans = satCheck(this, target)
       // determine the appropriate feedback
       result = (ans)
@@ -1544,6 +2570,7 @@ LogicConcept.prototype._validate = function (target = this,
       if (Validation.result(target).result === 'valid') {
         // say(`Prop valid, so checking for preemies`)
         // say(`this is currently a given ${this.isA('given')}`)
+        // ans = profile(()=>satCheck(this, target, true),'SAT check')
         ans = satCheck(this, target, true)
         // determine the appropriate feedback
         result = (ans)
@@ -1656,13 +2683,21 @@ Environment.prototype._validateall = function ( target = this,
 
     // get the set of all Lets in inference let environments of this environment
     // unless their parent has no conclusions or if the let is inside a proof
-    // marked with attribute 'target:true'. 
+    // marked with attribute 'target:true'.
     let lets = this.lets().filter( x => {
+      // skip Lets inside declaration bodies (e.g. inside a ForSome whose body is
+      // a Let-environment).  The interior of a declaration is propositionally
+      // atomic - it is never separately validated, so its conclusions have no
+      // validation results - and its propositional content is carried by the
+      // copy of the body inserted after the declaration, whose Lets are swept
+      // in the usual way.
+      if ( x.hasAncestorSatisfying( a => a !== x && a instanceof Declaration ) )
+        return false
       const doc=target.root()
       if ( doc.targetproof ) {
          return x.ancestors().includes(doc.targetproof)
       } else {
-        return !x.parent().ancestors().some( y => y.isA('given') ) 
+        return !x.parent().ancestors().some( y => y.isA('given') )
       }
     } )
 
@@ -1713,7 +2748,7 @@ Environment.prototype._validateall = function ( target = this,
  * target.
  */
 LogicConcept.prototype.irrelevantTo = function (target) {
-  // it's not an ancestor of the target and has an ancestor that is not
+  // it's not an ancestor of the target and has no ancestor that is 
   // accessible to the target
   return target.ancestors().indexOf(this) < 0 &&
     !this.hasAncestorSatisfying(z => { return z.isAccessibleTo(target, true) })
@@ -1740,9 +2775,10 @@ LogicConcept.prototype.irrelevantTo = function (target) {
   // rename them with their index in the lookup array
   allProps.forEach( s => { 
     const pname = s.getAttribute('ProperName')
-    const tick = (pname.endsWith("'")) ? "'" : ''
     s.setAttribute('ProperName', 
-      pname.replace(/([^#]+)#(.+)/,`$1#${lookup.indexOf(pname)}`+tick))
+      pname.replace(/([^#]+)#([\s\S]+)/, `$1#${lookup.indexOf(pname)}`)
+      // pname.replace(/([^#]+)#(.+)/,`$1#${lookup.indexOf(pname)}`)
+    )
   })
 }
 
@@ -1784,36 +2820,12 @@ const markDeclarationContexts = doc => {
     })
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Debottlenecker
-//
-// In order to see where the bottlenecks are in the code, we build here a crude
-// custom code profiler/timer. It works as follows. Calling Benchmark(f,name)
-// times the execution of function f and stores the time it took under the name
-// 'name', which should be a string, in a global object called Report with a key
-// for each name.  The value of each key is an object of the form { calls:n ,
-// time:t } where n is the number of times the routine was called, and t was the
-// total time it took for those calls.
-//
-// TODO:
-// * finish this
-let Stats = {}
-const Benchmark = function (f, name) {
-  const start = Date.now()
-  f()
-  const t = Date.now() - start
-  if (!Report[name]) {
-    Report[name] = { calls: 1, time: t }
-  } else {
-    Report[name].calls++
-    Report[name].time += t
-  }
-}
-
 export default {
-  validate, getUserPropositions, instantiate, markDeclarationContexts,
-  processBIHs, processEquations, splitEquations, processDomains, diff,
-  cacheFormulaDomainInfo, Benchmark, getCaselikeRules, LurchOptions, Stats,
-  matchPropositions, LogicConcept, Formula, Scoping, Validation
+  validate, getUserPropositions, instantiate, insertInstantiation, 
+  insertSymmetricEquivalences, reverseEquation, markDeclarationContexts, processBIHs, 
+  processChains, processEquations, processSetBuilders, upgradeChains, eq2chain, splitChains,
+  splitEquations, processDomains, diff, cacheFormulaDomainInfo, 
+  getCaselikeRules, LurchOptions, matchPropositions, LogicConcept, 
+  Formula, Scoping, Validation, patternForm
 }
 ///////////////////////////////////////////////////////////////////////////////

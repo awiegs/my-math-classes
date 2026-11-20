@@ -5,13 +5,33 @@
 # ignore the node modules
 node_modules/
 
+# ignore Playwright test artifacts
+test-results/
+playwright-report/
+
+# the local CDN cache the test suite downloads for itself (see cdn-cache.js)
+.cache/
+
+# ignore .claude settings and project management cruft
+.claude/
+parser-intersection-audit.md
+parser-upgrade-roadmap.md
+
+# ignore the output of the line counter extension
+.VSCodeCounter
+
 # ignore lots of stuff for local customizations
+toc.html
 
 # ignore the initproofs.js file for Lode
 initproofs.js
 
-# ignore the following folders from math299
+# ignore the following folders
+/mystuff
 /math299
 /pima
 /cicm
+/learn/proofs/embed
 studentfiles299
+/tasks
+AGENTS.md

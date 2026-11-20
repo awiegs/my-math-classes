@@ -491,20 +491,45 @@ export class LurchDocument {
                 'notation',
                 'Default notation to use for new expressions',
                 [ 'Lurch notation', 'LaTeX' ],
-                appSettings.get( 'notation' )
+                // appSettings.get( 'notation' )
+                'Lurch notation'
             ),
             new CategorySettingMetadata(
                 'shell style',
                 'Style for displaying environments',
                 [ 'boxed', 'minimal' ],
                 appSettings.get( 'default shell style' )
+                // 'minimal'
             )
         ),
         new SettingsCategoryMetadata(
           'Validation options',
-          new BoolSettingMetadata( 'instantiateEverything', 'Try harder to validate (can be much slower)', false )
+          new BoolSettingMetadata( 'instantiateEverything', 'Try harder to validate (can be much slower)', false ),
+          new BoolSettingMetadata( 'hideShellNames', 'Hide marginal shell annotations in semantic view', false )
        )
     )
+
+    /**
+     * This is a truncated version of {@link settingsMetadata} to keep users
+     * away from advanced, confusing, or no longer functional settings.
+     */
+    static shortSettingsMetadata = new SettingsMetadata(
+        new SettingsCategoryMetadata(
+            'Document metadata',
+            new TextSettingMetadata( 'title', 'Title', '' ),
+            new TextSettingMetadata( 'author', 'Author', '' ),
+            new TextSettingMetadata( 'date', 'Date', '' ),
+            new LongTextSettingMetadata( 'abstract', 'Abstract', '' )
+        ),
+        new SettingsCategoryMetadata(
+          'Validation options',
+          new BoolSettingMetadata( 'instantiateEverything', 'Try harder to validate (can be much slower)', false ) 
+          // ,
+          // We temporarily hide the following since it doesn't work yet. 
+          // new BoolSettingMetadata( 'hideShellNames', 'Hide marginal shell annotations in semantic view', false )
+        )  
+    )
+
 
     /**
      * This array lists those settings that should be marked as classes on the

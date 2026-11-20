@@ -1,0 +1,16 @@
+
+            <div id="loadlink">
+                <p><a>Open this file in the Lurch web app</a></p>
+                <script language="javascript">
+                    const link = document.querySelector( '#loadlink > p > a' )
+                    const thisURL = encodeURIComponent( window.location.href )
+                    link?.setAttribute( 'href', 'http://localhost:3000/instructor.html?load=' + thisURL )
+                </script>
+            </div>
+        
+            <div id="metadata" style="display: none;"><div data-category="main" data-key="header" data-value-type="html"></div></div>
+            <div id="document"><h1>Rules, Definitions, and Theorems</h1>
+<h3>Ken Monks - University of Scranton - Spring 2026</h3>
+<p>Below you will find some of the rules, definitions, theorems, and declarations that we use in the course.&nbsp; For more detail about these rules see the notes at lurch.plus/learn/proofs.</p>
+<p>&nbsp;</p></div>
+        

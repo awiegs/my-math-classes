@@ -74,7 +74,7 @@ const goldstar     = starPen('★')
 const redstar      = xPen('☆')
 const greencheck   = checkPen('✔︎')
 const redx         = xPen('✗')
-const inapplicable = '⊘'     
+const inapplicable = xPen('⚠︎')  
 const idunno       = '❓'  // the emoji itself is red
 const preemiex     = xPen('⁉︎') 
 
@@ -179,7 +179,7 @@ const defaultOptions = { showSimpleProperNames , showUserThms , showValidation }
 
 
 // Syntactic sugar for the formatter
-const metavariable = 'LDE MV'
+const metavariable = 'Metavar'
 const instantiation = 'LDE CI'
 const EFA = 'LDE EFA'
 const formula = 'Formula'
@@ -314,9 +314,11 @@ const formatter = ( options=defaultOptions ) => {
         // isn't necessary when there's a gold star, but we now treat them as
         // independent since so the user sees both kinds of feedback.
         ans += greencheck
-        // Propositionally invalid ones. Add a red x even if it's a BIH  
+        // Propositionally invalid ones. Add a red x even if it's a BIH
       } else if ((Validation.result(L) && Validation.result(L).result!=='valid')) {
-        ans += (Validation.result(L).reason==='preemie') ? preemiex : redx
+        ans += (Validation.result(L).reason==='preemie') ? preemiex :
+               (Validation.result(L).result==='inapplicable') ? xPen(inapplicable) :
+               redx
       }
     }
     // mark redeclared symbols
@@ -346,14 +348,18 @@ const isNestedLCs = A => {
 
 // Apply the custom formatter to nested arrays and sets containing LCs. Indent
 // and number lines as needed.  Note that for Arrays or Sets we usually are
-// debugging something, so we show everything.
-const format = (x,options,indentlevel=0) => {
+// debugging something, so we show everything.  Similarly, we usually want to
+// show everything when not showing an entire document (like just one rule or
+// instantiation).  We check that using indentlevel.
+const format = (x,options,indentlevel=0) => {  
   if (x instanceof LogicConcept) {
+    // if it's not a document, show everything
+    if (indentlevel==0 && !x.isA('document') ) options=all
     return defaultPen(indent(
       x.toPutdown(formatter(options), 
         text => /\n/.test( text )         || 
                 /^[ \t"]*$/.test( text )  ||
-                erase(text).length > 50  
+                erase(text).length > 120  
       ),indentlevel))
   } else if (typeof x === 'string') { 
     return indent(stringPen(x),indentlevel)
@@ -591,6 +597,20 @@ LogicConcept.prototype.Rule = function(n) {
 Object.defineProperty(LogicConcept.prototype, 'all', {
   get: function() {
     this.report(all)
+  }
+})
+
+// Because this is used so often
+Object.defineProperty(LogicConcept.prototype, 'clean', {
+  get: function() {
+    this.report(clean)
+  }
+})
+
+// Because this is used so often
+Object.defineProperty(LogicConcept.prototype, 'allclean', {
+  get: function() {
+    this.report(allclean)
   }
 })
 

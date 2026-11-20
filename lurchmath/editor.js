@@ -193,11 +193,12 @@ window.Lurch = {
                 'removeformat'
             ),
             document : buildMenu( 'Document',
-                'viewdependencyurls',
+                'viewcontext',
                 'validate clearvalidation',
                 'docsettings togglemeaning'
-            ),
-            help : buildMenu( 'Help', 'aboutlurch' )
+            )
+            // we now add this after adding the custom ones so About is last
+            // help : buildMenu( 'Help', 'aboutlurch' )
         }, options.menuData )
 
         // If the options object specifies default app settings, apply them:
@@ -228,11 +229,11 @@ window.Lurch = {
         }
 
         // If developer mode is enabled in settings, create the Developer menu
-        if ( appSettings.get( 'developer mode on' ) === true )
-            menuData.developer = buildMenu( 'Instructor',
-               'editdependencyurls',
-               'viewdocumentcode redpen'
-            )
+        // if ( appSettings.get( 'developer mode on' ) === true )
+        //     menuData.developer = buildMenu( 'Instructor',
+        //        'editdependencyurls',
+        //        'viewdocumentcode redpen'
+        //     )
 
         // Add any help pages from the options object to a new help menu.
         // Further below, during editor initialization, we will install menu
@@ -243,7 +244,10 @@ window.Lurch = {
                 menuData.help = buildMenu( 'Help', `helpfile${index+1}` )
             else
                 menuData.help.items += ' ' + `helpfile${index+1}`
+             
         } )
+        // Add the About item last
+        menuData.help.items += ' aboutlurch'
 
         // Load TinyMCE from its CDN...
         return new Promise( ( resolve, _ ) => loadScript( TinyMCEURL ).then( () => {
@@ -258,19 +262,94 @@ window.Lurch = {
                     MathLiveCSS
                 ],
                 visual_table_class : 'lurch-borderless-table',
+                noneditable_class: 'mceNonEditable',
                 height : "100%",
                 promotion : false, // disable premium features advertisement
                 toolbar : options.toolbarData,
                 menubar : 'file edit insert format document developer help',
                 menu : menuData,
                 browser_spellcheck: true,
-                contextmenu : 'atoms',
-                plugins : 'lists link',
+                // Disable TinyMCE's markdown-style autoformatting (e.g., typing
+                // "1. " or "* " at the start of a line auto-converts to a list),
+                // since it doesn't play nice with Lurch atoms. This only affects
+                // as-you-type conversion; explicit list toolbar/menu commands
+                // and pasted markdown/lists are unaffected.
+                text_patterns : false,
+                contextmenu : 'atoms lurchBase',
+                plugins : 'lists link contextmenu',
                 link_context_toolbar: true,
                 statusbar : false,
                 setup : editor => {
+
+                    // Register base context menu items once and expose a getter for Atoms
+                    const installBaseMenu = editor => {
+                        const reg = editor.ui.registry.getAll().menuItems
+                        // idempotent: avoid duplicate registration if multiple editors exist
+                        if (reg && reg.shellLabels) return
+
+                        // Base menu items
+                        editor.ui.registry.addMenuItem('shellLabels', {
+                            text: 'Show/Hide Environment Labels',
+                            tooltip: 'Show or hide the environment labels when viewing meaning.',
+                            onAction: () => { 
+                              editor.getBody().classList.toggle('shell-labels') 
+                              editor.focus()
+                            }
+                        })
+                        editor.ui.registry.addMenuItem('toggleMargins', {
+                            text: 'Toggle page margins',
+                            tooltip: 'Display or omit the side margins of the document.',
+                            onAction: () => { 
+                              editor.getBody().classList.toggle('presentation-mode') 
+                              editor.focus()
+                            }
+                        })
+                        editor.ui.registry.addMenuItem('enterFullscreen', {
+                          text: 'Enter fullscreen',
+                          onAction: () => editor.execCommand('mceFullScreen')
+                        })
+                        editor.ui.registry.addMenuItem('exitFullscreen', {
+                          text: 'Exit fullscreen',
+                          onAction: () => editor.execCommand('mceFullScreen')
+                        })
+                        editor.lurchBaseMenu = () => 'shellLabels toggleMargins'
+                    }
+
                     // Save the options object for any part of the app to reference:
-                    editor.appOptions = options
+                    editor.appOptions = options                    
+                    
+                    // Register base context menu before Atoms installs its own
+                    installBaseMenu(editor)
+
+                    // Show the base context menu when right-clicking anything,
+                    // but only if the editor body has class "shell-style-boxed"
+                    editor.ui.registry.addContextMenu('lurchBase', {
+                      update: () => {
+                        const hasBoxed = editor.getBody().classList.contains('shell-style-boxed')
+                        return hasBoxed && editor.lurchBaseMenu ? editor.lurchBaseMenu() : ''
+                      }
+                    })
+
+                    editor.ui.registry.addContextMenu('lurchBase', {
+                      update: () => {
+                        const body = editor.getBody()
+                        let result = ''
+                        // add the shell-labels item iff showing meaning 
+                        if (body.classList.contains('shell-style-boxed') && editor.lurchBaseMenu) 
+                          result += editor.lurchBaseMenu()
+
+                        // Robust fullscreen state: use plugin API if available, else class probe
+                        const isFs = !!(
+                          editor?.plugins?.fullscreen?.isFullscreen?.() ??
+                          (document.documentElement.classList.contains('tox-fullscreen') ||
+                           document.body.classList.contains('tox-fullscreen'))
+                        )
+                        // choose which item to show
+                        const toggleFullscreen = isFs ? 'exitFullscreen' : 'enterFullscreen'
+                        result += ' '+ toggleFullscreen
+                        return result
+                      }
+                    })
 
                     // As soon as the editor is ready...
                     editor.on( 'init', () => {
@@ -307,18 +386,18 @@ window.Lurch = {
                     } )            
                     // Add About Lurch menu item
                     editor.ui.registry.addMenuItem( 'aboutlurch', {
-                        text : 'About Lurch for Math 299',
+                        text : 'About Lurch',
                         // icon : 'help',
-                        tooltip : 'About Lurch for Math 299',
+                        tooltip : 'About Lurch',
                         onAction : () => window.open(
-                            '/299-site', '_blank' )
+                            './about', '_blank' )
                     } )
 
                     // Add red pen menu item
                     editor.ui.registry.addMenuItem( 'redpen', {
                         text : 'Grading pen',
                         tooltip : 'Enable grading pen style',
-                        shortcut : 'meta+shift+G',
+                        shortcut : 'meta+Shift+G',
                         icon : 'highlight-bg-color',
                         onAction : () => {
                             editor.execCommand( 'Italic' )
@@ -354,7 +433,25 @@ window.Lurch = {
                             return false
                         }
                     } )
+                     
+                    // when using the fullscreen plugin, check if the app is changed
+                    // to full screen and if so toggle the visibility of the
+                    // Lurch menu and toolbar and Logo
+                    editor.on('FullscreenStateChanged', function(e) {
 
+                        if (e.state) {
+                            // Hide toolbar and menus
+                            document.querySelector('.tox-editor-header').style.display = 'none'
+                            // Hide status bar (we don't have one)
+                            // document.querySelector('.tox-statusbar').style.display = 'none' 
+                        } else {
+                            // Show toolbar and menus
+                            document.querySelector('.tox-editor-header').style.display = ''
+                            // Show status bar (we don't have one)
+                            // document.querySelector('.tox-statusbar').style.display = '' 
+                        }
+                    })
+                  
                     // Do not let the user leave the page accidentally, only on
                     // purpose (after confirming via dialog).  See docs above
                     // for the default value of this feature.

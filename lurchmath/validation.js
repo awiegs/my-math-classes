@@ -25,9 +25,10 @@
 
 import { Message } from './validation-messages.js'
 import { Atom } from './atoms.js'
-import { Dialog } from './dialog.js'
-import { isOnScreen } from './utilities.js'
+import { Dialog, HTMLItem } from './dialog.js'
+import { isOnScreen, escapeHTML } from './utilities.js'
 import { LurchDocument } from './lurch-document.js'
+import { appSettings } from './settings-install.js'
 
 /**
  * This function should be called in the editor's setup routine.  It installs
@@ -55,7 +56,8 @@ import { LurchDocument } from './lurch-document.js'
 export const install = editor => {
 
     // Object for storing the progress notification we show during validation
-    let progressNotification = null
+    // let progressNotification = null
+    editor.progressDialog = null
 
     // Define utility function used below:
     // Remove all validation markers from all atoms and shells in the editor
@@ -119,19 +121,68 @@ export const install = editor => {
                     console.log( JSON.stringify( message.content, null, 4 ) )
                 }
             } else if ( message.is( 'progress' ) ) {
-                progressNotification.progressBar.value( message.get( 'complete' ) )
+                // update the progress meter %
+                const progress = Math.round(message.get('complete') || 0)
+                const meter = editor.progressDialog?.querySelector('#progress-text')
+                const gap = (progress<10)?'  ':' '
+                if (meter)
+                  meter.textContent = `Validating...${gap}${progress}%`
             } else if ( message.is( 'done' ) ) {
-                progressNotification.close()
-                Dialog.notify( editor, 'success', 'Validation complete', 2000 )
-                progressNotification = null
-                editor.dispatch( 'validationFinished' )
+              const showcomplete = appSettings.get('show validation has completed')
+              // const showcomplete = true
+              // check that the dialog isn't already closed by the user
+              // (shouldn't happen because them closing the dialog kills the
+              // worker that would generate this message, but maybe a race
+              // condition is possible?)
+              const dialog = editor.progressDialog
+              if (!dialog) return
+              
+              // We could just immediately close the dialog when it's finished
+              // to allow the user to get back to editing as quickly as
+              // possible.  But a very brief message saying it's done might will
+              // make it less jarring, initially. So we make that an application
+              // setting.
+              if (showcomplete) {
+                  // Change background and message
+                  dialog.element.classList.add('validation-completed')
+                  const textEl = dialog.querySelector('#progress-text')
+                  if (textEl) textEl.textContent = 'Validation... done!'
+                  // Delay 750ms, then close — unless already closed
+                  //
+                  // Note that we don't need to kill the worker in this situation
+                  // since it has already finished validating
+                  setTimeout(() => {
+                      if (editor.progressDialog === dialog) {
+                        dialog.close()
+                        editor.progressDialog = null
+                        editor.dispatch('validationFinished')
+                      }
+                  }, 750)
+              } else {
+                  // same thing but without the background change and delay
+                  const textEl = dialog.querySelector('#progress-text')
+                  if (textEl) textEl.textContent = 'Validation...100%'
+                  if (editor.progressDialog === dialog) {
+                    dialog.close()
+                    editor.progressDialog = null
+                    editor.dispatch('validationFinished')
+                  }
+              }
+              // For future reference, note that in general using something like
+              // this:
+              //
+              // Dialog.notify( editor, 'success', 'Validation complete', 2000)
+              //
+              // Is a bad idea because if the user opens a modal dialog while
+              // the notification is open, this notification window will close
+              // the dialog unexpectedly.
             } else if ( message.content?.type?.startsWith( 'mathlive#' ) ) {
                 // Ignore messages MathLive is sending to itself
             } else if ( event.data['lurch-embed'] ) {
                 // Ignore messages that initialize embedded Lurch instances
             } else {
                 console.log( 'Warning: unrecognized message type' )
-                // console.log( JSON.stringify( message.content, null, 4 ) )
+                console.log( JSON.stringify( message.content, null, 2 ) )
             }
         } )
     installEventHandlers( window )
@@ -144,46 +195,112 @@ export const install = editor => {
         installEventHandlers( result )
         return result
     }
-    let worker = newValidationWorker()
 
-    // Add menu item for toggling validation
-    editor.ui.registry.addMenuItem( 'validate', {
-        text : 'Show/Hide feedback ✔︎',
-        icon : 'preview',
-        tooltip : 'Run Lurch\'s checking algorithm on the document',
-        shortcut : 'meta+0',
-        onAction : () => {
-            // If there is validation in progress, terminate it and say so.
-            if ( progressNotification ) {
-                progressNotification.close()
-                progressNotification = null
-                worker.terminate()
-                worker = newValidationWorker()
-                Dialog.notify( editor, 'warning', 'Validation stopped', 2000 )
-                editor.dispatch( 'validationFinished' )
-                return
-            }
-            // If there are validation results in the document, then clear them
-            // out and be done.
-            if ( Array.from(
-                editor.getBody().querySelectorAll( '[class^=feedback-marker]' )
-            ).some( feedback => isOnScreen( feedback ) ) ) {
-                clearAll()
-                return
-            }
-            // Otherwise the user wants us to start validation now; do so.
-            // Clear old results just to be safe.
+    editor.worker = newValidationWorker()
+
+    // the validation action for both the menu item and the toolbar button
+    const toggleValidation = () => {
+        // If there is validation in progress, we might want to terminate
+        // it, but changing the notification to a modal dialog seems to
+        // prevent the hotkey for the menu item from doing anything when the
+        // dialog is shown (i.e., the entire editor is locked) 
+
+        // If there are validation results in the document, then clear them
+        // out and be done.
+        if ( Array.from(
+            editor.getBody().querySelectorAll( '[class^=feedback-marker]' )
+        ).some( feedback => isOnScreen( feedback ) ) ) {
             clearAll()
-            // Start progress bar in UI
-            progressNotification = editor.notificationManager.open( {
-                text : 'Validating...',
-                type : 'info',
-                progressBar : true
-            } )
-            // Send the document to the worker to initiate background validation
-            Message.document( editor, 'putdown' ).send( worker )
+            return
         }
+        // Otherwise the user wants us to start validation now; do so.
+        // Clear old results just to be safe.
+        clearAll()
+        // Start progress bar in UI
+        const dialog = new Dialog('Validating...', editor, 'progress-dialog')
+        
+        // Add a progress bar
+        const progressDisplay = new HTMLItem(
+            `
+            <div id="progress-row">
+              <span id="progress-text">Validating...  0%</span>
+              <span id="progress-close" title="Cancel validation">
+                <svg xmlns="http://www.w3.org/2000/svg" 
+                  viewBox="0 0 384 512"
+                  width="16"
+                  height="16" 
+                  fill="#000">
+                  <!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.-->
+                  <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z"/>
+                </svg>
+              </span>
+            </div>
+            `)
+        dialog.addItem(progressDisplay)
+        
+        // hide the header and footer
+        dialog.hideHeader = true
+        dialog.hideFooter = true
+        
+        // Override the cancel logic to allow it to stop the worker
+        dialog.json.onCancel = () => {
+            if (editor.worker) {
+                editor.worker.terminate()
+                editor.worker = newValidationWorker()
+            }
+            editor.dispatch('validationFinished')
+            dialog.close()
+            editor.progressDialog = null
+        }
+        // cache the dialog in the editor
+        editor.progressDialog = dialog
+        
+        // show the editor 
+        dialog.show()
+        // after it is created add the close button onclick action
+        setTimeout(() => {
+          const closeButton = dialog.querySelector('#progress-close')
+          if (closeButton)
+            dialog.element.tabIndex = -1
+            dialog.element.focus({ preventScroll: true })
+            closeButton.onclick = () => {
+              if (editor.worker) {
+                  editor.worker.terminate()
+                  editor.worker = newValidationWorker()
+              }
+              editor.dispatch('validationFinished')
+              dialog.close()
+              editor.progressDialog = null
+            }
+        }, 0)
+        // Send the document to the worker to initiate background validation
+        Message.document( editor, 'putdown' ).send( editor.worker )
+    }
+
+
+    // Add menu item and toolbar button for toggling validation
+    editor.ui.registry.addMenuItem( 'validate', {
+      text : 'Show/Hide validity',
+      icon : 'preview',
+      tooltip : 'Run Lurch\'s validity checking algorithm on the document',
+      shortcut : 'meta+0',
+      onAction : toggleValidation
     } )
+    // custom Lurch checkmark for toolbar icon
+    editor.ui.registry.addIcon('lurchCheck', `
+      <svg width="24" height="24" viewBox="0 0 24 24">
+        <text x="4" y="17"
+          style="font-family: Lato, sans-serif; font-weight: 900; font-size: 18px; fill: #4CAF50;">
+          ✓
+        </text>
+      </svg>
+    `)
+    // the same thing, but on the toolbar
+    editor.ui.registry.addButton('validate', {
+      icon: 'lurchCheck',
+      tooltip: 'Show/Hide validity',
+      onAction: toggleValidation
+    })
 
     // Add menu item for clearing validation results
     editor.ui.registry.addMenuItem( 'clearvalidation', {
@@ -212,16 +329,138 @@ export const install = editor => {
         }
     } )
 
+    // the html blob page template for viewing the meaning
+    const makehtml = ( pagetitle, code ) => {
+        // The first serialization makes the clipboard text a safe JavaScript
+        // string literal for Lode.  The second safely embeds that literal as
+        // a string inside this page's script.
+        const clipboardText = JSON.stringify( code )
+        const forClipboard = JSON.stringify( clipboardText )
+            .replace( /<\/script/gi, '<\\/script' )
+        return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>${pagetitle} code for this document</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Roboto:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+  body {
+    margin: 1rem;
+    background: #1f1f1f;
+    color: #f0f0f0;
+    font-family: "Roboto Mono", "Andale Mono", Consolas, Monaco, "Courier New", monospace;
+  }
+  pre {
+    color: inherit;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 0.75rem;
+    overflow: auto;
+  }
+  hr {
+    border: none;
+    border-top: 1px solid #555;
+    margin: 1rem 0;
+  }
+  #copy-link {
+    color: #1e293b;
+    font-family: "Open Sans", Cabin, sans-serif;
+    font-size: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: aliceblue;
+    border-radius: 8px;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease;
+  }
+  #copy-link:hover {
+    background: #eef7ff;
+    border-color: #7CA2EB;
+  }
+  #copy-status {
+    margin-left: 0.75rem;
+    color: #8fd18f;
+  }
+</style>
+</head>
+<body>
+  <button id="copy-link">Copy to clipboard</button>
+  <span id="copy-status"></span>
+
+  <hr>
+
+  <pre>${escapeHTML(code)}</pre>
+
+  <script>
+    document.getElementById('copy-link').addEventListener('click', () => {
+      navigator.clipboard.writeText(${forClipboard}).then(() => {
+        const status = document.getElementById('copy-status')
+        status.textContent = 'Copied!'
+        setTimeout(() => status.textContent = '', 2000)
+      })
+    })
+  </script>
+</body>
+</html>`
+    }
+
     // Add developer menu item for debugging document meaning
     editor.ui.registry.addMenuItem( 'viewdocumentcode', {
-        text : 'View document code',
+        text : 'View putdown code',
         icon : 'sourcecode',
         tooltip : 'View the putdown code for the document in a new tab',
         onAction : () => {
             const code = Message.document( editor, 'putdown' ).content.code
+            const html = makehtml( 'Putdown code for the document', code )
+            const link = document.createElement( 'a' )
+            link.setAttribute( 'target', '_blank' )
+            const blob = new Blob( [ html ], { type: "text/html" } )
+            link.href = URL.createObjectURL( blob )
+            link.click()
+        }
+    } )
+
+    // Add developer menu item for debugging document meaning, in the Lurch
+    // Notation the user actually typed (rather than in putdown), so it can
+    // be pasted into Lode
+    editor.ui.registry.addMenuItem( 'downloaddocumentlurchnotation', {
+        text : 'Download document code (Lurch notation)',
+        icon : 'sourcecode',
+        tooltip : 'Download the Lurch notation for the document',
+        onAction : () => {
+            const code = Message.documentInLurchNotation( editor )
             const link = document.createElement( 'a' )
             link.setAttribute( 'target', '_blank' )
             const blob = new Blob( [ code ], { type: "text/plain" } )
+            link.href = URL.createObjectURL( blob )
+            const fileID = new LurchDocument( editor ).getFileID() ||
+                'lurch-document'
+            link.download = fileID
+            link.click()
+        }
+    } )
+
+    // Add developer menu item for debugging document meaning, in the Lurch
+    // Notation the user actually typed (rather than in putdown), so it can
+    // be pasted into Lode.  This one opens a small HTML page (rather than
+    // the raw text/plain the other "view" items use) because copying the
+    // code by selecting it in a plain-text view is unreliable (it can pick
+    // up stray control characters); the copy-to-clipboard link below writes
+    // the exact string as a JSON string literal, so it can be pasted directly
+    // after a variable assignment in Lode without changing any escapes.
+    editor.ui.registry.addMenuItem( 'viewdocumentlurchnotation', {
+        text : 'View user code',
+        icon : 'sourcecode',
+        tooltip : 'View the Lurch notation for the document in a new tab',
+        onAction : () => {
+            const code = Message.documentInLurchNotation( editor )
+            const html = makehtml( 'Lurch notation code for the document', code )
+            const link = document.createElement( 'a' )
+            link.setAttribute( 'target', '_blank' )
+            const blob = new Blob( [ html ], { type: "text/html" } )
             link.href = URL.createObjectURL( blob )
             link.click()
         }
